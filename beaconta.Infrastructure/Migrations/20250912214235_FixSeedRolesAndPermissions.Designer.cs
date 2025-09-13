@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using beaconta.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using beaconta.Infrastructure.Data;
 namespace beaconta.Infrastructure.Migrations
 {
     [DbContext(typeof(BeacontaDb))]
-    partial class BeacontaDbModelSnapshot : ModelSnapshot
+    [Migration("20250912214235_FixSeedRolesAndPermissions")]
+    partial class FixSeedRolesAndPermissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,154 +24,6 @@ namespace beaconta.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("beaconta.Domain.Entities.Permission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Permissions");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Category = "الطلاب",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "students.view",
-                            Name = "عرض الطلاب"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Category = "الطلاب",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "students.create",
-                            Name = "إضافة طالب"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Category = "الطلاب",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "students.edit",
-                            Name = "تعديل طالب"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Category = "الطلاب",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "students.delete",
-                            Name = "حذف طالب"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Category = "العقود",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "contracts.view",
-                            Name = "عرض العقود"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Category = "العقود",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "contracts.create",
-                            Name = "إنشاء عقد"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Category = "العقود",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "contracts.discount",
-                            Name = "إدارة الخصومات"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Category = "الحضور",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "attendance.view",
-                            Name = "عرض الحضور"
-                        },
-                        new
-                        {
-                            Id = 9,
-                            Category = "الحضور",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "attendance.edit",
-                            Name = "تعديل الحضور"
-                        },
-                        new
-                        {
-                            Id = 10,
-                            Category = "النظام",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "system.settings",
-                            Name = "الإعدادات العامة"
-                        },
-                        new
-                        {
-                            Id = 11,
-                            Category = "النظام",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "system.backup",
-                            Name = "النسخ الاحتياطي"
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Category = "النظام",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
-                            Key = "system.audit",
-                            Name = "سجل العمليات"
-                        });
-                });
 
             modelBuilder.Entity("beaconta.Domain.Entities.Role", b =>
                 {
@@ -182,10 +37,6 @@ namespace beaconta.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Key")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -209,7 +60,6 @@ namespace beaconta.Infrastructure.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             CreatedBy = "system",
-                            Key = "",
                             Name = "Admin"
                         },
                         new
@@ -217,7 +67,6 @@ namespace beaconta.Infrastructure.Migrations
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             CreatedBy = "system",
-                            Key = "",
                             Name = "Teacher"
                         },
                         new
@@ -225,7 +74,6 @@ namespace beaconta.Infrastructure.Migrations
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             CreatedBy = "system",
-                            Key = "",
                             Name = "Accountant"
                         });
                 });
@@ -386,7 +234,7 @@ namespace beaconta.Infrastructure.Migrations
                             Email = "",
                             FullName = "System Admin",
                             Notes = "",
-                            PasswordHash = "$2a$11$0DFszVYcLOyTz6o4UjD8nuhGgbLMyUZt9xkgqVpuOjQKoe/89Dw6u",
+                            PasswordHash = "123456",
                             Phone = "",
                             RoleId = 1,
                             Status = "active",

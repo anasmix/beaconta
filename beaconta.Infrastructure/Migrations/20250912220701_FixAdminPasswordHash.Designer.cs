@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using beaconta.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using beaconta.Infrastructure.Data;
 namespace beaconta.Infrastructure.Migrations
 {
     [DbContext(typeof(BeacontaDb))]
-    partial class BeacontaDbModelSnapshot : ModelSnapshot
+    [Migration("20250912220701_FixAdminPasswordHash")]
+    partial class FixAdminPasswordHash
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -185,10 +188,6 @@ namespace beaconta.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -209,7 +208,6 @@ namespace beaconta.Infrastructure.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             CreatedBy = "system",
-                            Key = "",
                             Name = "Admin"
                         },
                         new
@@ -217,7 +215,6 @@ namespace beaconta.Infrastructure.Migrations
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             CreatedBy = "system",
-                            Key = "",
                             Name = "Teacher"
                         },
                         new
@@ -225,7 +222,6 @@ namespace beaconta.Infrastructure.Migrations
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             CreatedBy = "system",
-                            Key = "",
                             Name = "Accountant"
                         });
                 });
@@ -386,7 +382,7 @@ namespace beaconta.Infrastructure.Migrations
                             Email = "",
                             FullName = "System Admin",
                             Notes = "",
-                            PasswordHash = "$2a$11$0DFszVYcLOyTz6o4UjD8nuhGgbLMyUZt9xkgqVpuOjQKoe/89Dw6u",
+                            PasswordHash = "$2a$11$OPwOB9mvmFXpQ8QzSI5H..24D2yIec3sTvNR/YeUENTRiEavFlwT.",
                             Phone = "",
                             RoleId = 1,
                             Status = "active",

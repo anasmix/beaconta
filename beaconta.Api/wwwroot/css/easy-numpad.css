@@ -1,0 +1,25 @@
+/* easy-numpad.css */
+/* أنماط لوحة الأرقام (Numpad) */
+
+.easy-numpad {
+  display: flex;
+  flex-wrap: wrap;
+  width: 220px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.easy-numpad button {
+  flex: 1 0 33%;
+  padding: 15px;
+  border: 1px solid #eee;
+  font-size: 18px;
+  background: #f9f9f9;
+  cursor: pointer;
+}
+
+.easy-numpad button:hover {
+  background: #e9ecef;
+}

@@ -1,29 +1,33 @@
 ﻿using beaconta.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Beaconta.Api.Controllers
+namespace beaconta.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthService _authService;
+        private readonly IAuthService _auth;
+        private readonly ICurrentUserService _current;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService auth, ICurrentUserService current)
         {
-            _authService = authService;
+            _auth = auth;
+            _current = current;
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
-            var token = await _authService.LoginAsync(request.Username, request.Password);
-
-            if (token == null)
-                return Unauthorized("Invalid username or password");
-
-            return Ok(new { token });
+            var token = await _auth.LoginAsync(req.Username, req.Password);
+            if (token == null) return Unauthorized(new { message = "Invalid credentials" });
+            return Ok(token);
         }
+
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult Me() => Ok(new { user = _current.Username, role = _current.Role });
     }
 
     public class LoginRequest

@@ -6,17 +6,23 @@ namespace beaconta.Infrastructure.Services
 {
     public class CurrentUserService : ICurrentUserService
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IHttpContextAccessor _http;
 
-        public CurrentUserService(IHttpContextAccessor httpContextAccessor)
+        public CurrentUserService(IHttpContextAccessor http)
         {
-            _httpContextAccessor = httpContextAccessor;
+            _http = http;
         }
 
+        public bool IsAuthenticated =>
+            _http.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
+
+        public string? UserId =>
+            IsAuthenticated ? _http.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value : null;
+
         public string? Username =>
-            _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Name)?.Value;
+            IsAuthenticated ? _http.HttpContext?.User?.FindFirst(ClaimTypes.Name)?.Value : null;
 
         public string? Role =>
-            _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
+            IsAuthenticated ? _http.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value : null;
     }
 }
