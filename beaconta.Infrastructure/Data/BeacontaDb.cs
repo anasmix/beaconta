@@ -15,9 +15,10 @@ namespace beaconta.Infrastructure.Data
         }
 
         public DbSet<User> Users => Set<User>();
-        public DbSet<Role> Roles { get; set; }
-        public DbSet<RolePermission> RolePermissions { get; set; }
-        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<Role> Roles => Set<Role>();
+        public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+        public DbSet<Permission> Permissions => Set<Permission>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -25,8 +26,14 @@ namespace beaconta.Infrastructure.Data
             // 🔹 العلاقة بين Role و RolePermission
             modelBuilder.Entity<Role>()
                 .HasMany(r => r.Permissions)
-                .WithOne(p => p.Role)
-                .HasForeignKey(p => p.RoleId)
+                .WithOne(rp => rp.Role)
+                .HasForeignKey(rp => rp.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RolePermission>()
+                .HasOne(rp => rp.Permission)
+                .WithMany()
+                .HasForeignKey(rp => rp.PermissionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // 🔹 Seed Roles
@@ -37,60 +44,58 @@ namespace beaconta.Infrastructure.Data
             );
 
             // 🔹 Seed Default Admin User
-
-            // داخل OnModelCreating
             modelBuilder.Entity<User>().HasData(
-    new User
-    {
-        Id = 1,
-        FullName = "System Admin",
-        Username = "admin",
-        // 🚨 لا تكتب HashPassword هنا لأنه ديناميكي
-        PasswordHash = "$2a$11$0DFszVYcLOyTz6o4UjD8nuhGgbLMyUZt9xkgqVpuOjQKoe/89Dw6u",
-        Status = "active",
-        RoleId = 1,
-        CreatedAt = new DateTime(2025, 01, 01),
-        CreatedBy = "system"
-    }
-);
-
-
-            // 🔹 Seed Permissions for Admin
-            modelBuilder.Entity<RolePermission>().HasData(
-                new RolePermission { Id = 1, Key = "users.view", DisplayName = "عرض المستخدمين", RoleId = 1, CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new RolePermission { Id = 2, Key = "users.create", DisplayName = "إضافة مستخدم", RoleId = 1, CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new RolePermission { Id = 3, Key = "users.edit", DisplayName = "تعديل مستخدم", RoleId = 1, CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new RolePermission { Id = 4, Key = "users.delete", DisplayName = "حذف مستخدم", RoleId = 1, CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new RolePermission { Id = 5, Key = "roles.manage", DisplayName = "إدارة الأدوار", RoleId = 1, CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" }
+                new User
+                {
+                    Id = 1,
+                    FullName = "System Admin",
+                    Username = "admin",
+                    PasswordHash = "$2a$11$0DFszVYcLOyTz6o4UjD8nuhGgbLMyUZt9xkgqVpuOjQKoe/89Dw6u", // bcrypt
+                    Status = "active",
+                    RoleId = 1,
+                    CreatedAt = new DateTime(2025, 01, 01),
+                    CreatedBy = "system"
+                }
             );
-
-            modelBuilder.Entity<User>()
-    .HasOne(u => u.Role)
-    .WithMany(r => r.Users)
-    .HasForeignKey(u => u.RoleId)
-    .OnDelete(DeleteBehavior.Restrict);
-
 
             // ✅ Seed Permissions
             modelBuilder.Entity<Permission>().HasData(
+                // المستخدمين
+                new Permission { Id = 1, Key = "users.view", Name = "عرض المستخدمين", Category = "المستخدمين", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 2, Key = "users.create", Name = "إضافة مستخدم", Category = "المستخدمين", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 3, Key = "users.edit", Name = "تعديل مستخدم", Category = "المستخدمين", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 4, Key = "users.delete", Name = "حذف مستخدم", Category = "المستخدمين", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 5, Key = "roles.manage", Name = "إدارة الأدوار", Category = "الأدوار", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+
                 // الطلاب
-                new Permission { Id = 1, Key = "students.view", Name = "عرض الطلاب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 2, Key = "students.create", Name = "إضافة طالب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 3, Key = "students.edit", Name = "تعديل طالب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 4, Key = "students.delete", Name = "حذف طالب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 6, Key = "students.view", Name = "عرض الطلاب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 7, Key = "students.create", Name = "إضافة طالب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 8, Key = "students.edit", Name = "تعديل طالب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 9, Key = "students.delete", Name = "حذف طالب", Category = "الطلاب", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+
                 // العقود
-                new Permission { Id = 5, Key = "contracts.view", Name = "عرض العقود", Category = "العقود", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 6, Key = "contracts.create", Name = "إنشاء عقد", Category = "العقود", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 7, Key = "contracts.discount", Name = "إدارة الخصومات", Category = "العقود", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 10, Key = "contracts.view", Name = "عرض العقود", Category = "العقود", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 11, Key = "contracts.create", Name = "إنشاء عقد", Category = "العقود", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 12, Key = "contracts.discount", Name = "إدارة الخصومات", Category = "العقود", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+
                 // الحضور
-                new Permission { Id = 8, Key = "attendance.view", Name = "عرض الحضور", Category = "الحضور", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 9, Key = "attendance.edit", Name = "تعديل الحضور", Category = "الحضور", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 13, Key = "attendance.view", Name = "عرض الحضور", Category = "الحضور", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 14, Key = "attendance.edit", Name = "تعديل الحضور", Category = "الحضور", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+
                 // النظام
-                new Permission { Id = 10, Key = "system.settings", Name = "الإعدادات العامة", Category = "النظام", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 11, Key = "system.backup", Name = "النسخ الاحتياطي", Category = "النظام", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
-                new Permission { Id = 12, Key = "system.audit", Name = "سجل العمليات", Category = "النظام", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" }
+                new Permission { Id = 15, Key = "system.settings", Name = "الإعدادات العامة", Category = "النظام", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 16, Key = "system.backup", Name = "النسخ الاحتياطي", Category = "النظام", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" },
+                new Permission { Id = 17, Key = "system.audit", Name = "سجل العمليات", Category = "النظام", CreatedAt = new DateTime(2025, 01, 01), CreatedBy = "system" }
             );
 
+            // ✅ Seed RolePermissions (Admin = كل الصلاحيات الأولى 1..5)
+            modelBuilder.Entity<RolePermission>().HasData(
+                new RolePermission { Id = 1, RoleId = 1, PermissionId = 1 },
+                new RolePermission { Id = 2, RoleId = 1, PermissionId = 2 },
+                new RolePermission { Id = 3, RoleId = 1, PermissionId = 3 },
+                new RolePermission { Id = 4, RoleId = 1, PermissionId = 4 },
+                new RolePermission { Id = 5, RoleId = 1, PermissionId = 5 }
+            );
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -25,7 +25,7 @@ $(function () {
             $("#role").select2({ theme: "bootstrap-5", width: "100%" });
             $("#bulkRoleSelect").select2({ theme: "bootstrap-5", width: "100%" });
             $("#filterRole").select2({ theme: "bootstrap-5", width: "100%", allowClear: true, placeholder: "كل الأدوار" });
-        }).catch(handleApiError);
+        }).catch(Utils.handleApiError);
     }
 
     // ---------- Build Table ----------
@@ -38,13 +38,12 @@ $(function () {
                     data: null, orderable: false, className: "text-center",
                     render: row => `<input type="checkbox" class="row-check" data-id="${row.id}" aria-label="select">`
                 },
-                { data: "username", render: d => `<span class="fw-bold">${escapeHtml(d)}</span>` },
-                { data: "fullName", render: d => escapeHtml(d || '') },
-                { data: "email", render: d => escapeHtml(d || '—') },
-                { data: "roleName", render: d => roleChip(d) },
-                // نعرض Badge بالعربي لكن نبقي قيمة البحث على النص العربي أيضًا
-                { data: "status", className: "text-center", render: s => statusBadge(s) },
-                { data: "lastLogin", render: fmtDate },
+                { data: "username", render: d => `<span class="fw-bold">${Utils.escapeHtml(d)}</span>` },
+                { data: "fullName", render: d => Utils.escapeHtml(d || '') },
+                { data: "email", render: d => Utils.escapeHtml(d || '—') },
+                { data: "roleName", render: d => Utils.roleChip(d) },
+                { data: "status", className: "text-center", render: s => Utils.statusBadge(s) },
+                { data: "lastLogin", render: Utils.fmtDate },
                 {
                     data: null, orderable: false, className: "text-nowrap",
                     render: (row) => `
@@ -61,15 +60,14 @@ $(function () {
         });
 
         // Search
-        $("#txtSearch").on("input", debounce(function () {
+        $("#txtSearch").on("input", Utils.debounce(function () {
             dt.search(this.value).draw();
         }, 250));
 
-        // Status filter (نطابق الكلمات التي تظهر داخل الـ Badge)
+        // Status filter
         $("#filterStatus").on("change", function () {
-            const v = this.value; // '' | 'active' | 'inactive'
+            const v = this.value;
             if (!v) { dt.column(5).search('', true, false).draw(); return; }
-            // نفترض أن statusBadge يعرض "نشط" و"موقوف"
             const term = v === 'active' ? 'نشط' : 'موقوف';
             dt.column(5).search(term, true, false).draw();
         });
@@ -90,14 +88,13 @@ $(function () {
         $("#tblUsers tbody").on("change", ".row-check", function () {
             const selected = $(".row-check:checked").length;
             $("#bulkCount").text(selected);
-            // أظهر شريط الدُفعة عند وجود تحديد
             $("#bulkToolbar").toggleClass("bulk-toolbar", selected === 0);
         });
     }
 
     function reloadTable() {
         reloadDataTable(dt, users);
-        updateStats(users);
+        Utils.updateStats(users);
         $("#chkAll").prop("checked", false);
         $(".row-check").prop("checked", false);
         $("#bulkToolbar").addClass("bulk-toolbar");
@@ -111,8 +108,8 @@ $(function () {
     function loadUsers() {
         return apiGet(API.users).then(data => {
             users = (data || []).map(normalizeUser);
-            if (dt) { reloadTable(); } else { buildTable(); updateStats(users); }
-        }).catch(handleApiError);
+            if (dt) { reloadTable(); } else { buildTable(); Utils.updateStats(users); }
+        }).catch(Utils.handleApiError);
     }
 
     // ---------- Details ----------
@@ -125,19 +122,19 @@ $(function () {
           <i class="bi bi-person fs-3"></i>
         </div>
         <div>
-          <div class="h5 mb-0">${escapeHtml(fmt(u.fullName))}</div>
-          <div class="text-muted small">@${escapeHtml(fmt(u.username))} · ${statusBadge(u.status)}</div>
+          <div class="h5 mb-0">${Utils.escapeHtml(Utils.fmt(u.fullName))}</div>
+          <div class="text-muted small">@${Utils.escapeHtml(Utils.fmt(u.username))} · ${Utils.statusBadge(u.status)}</div>
         </div>
       </div>
       <div class="row g-2">
-        <div class="col-12">${roleChip(u.roleName)}</div>
+        <div class="col-12">${Utils.roleChip(u.roleName)}</div>
         <div class="col-12"><hr></div>
-        <div class="col-6"><div class="text-muted small">البريد</div><div class="fw-semibold">${escapeHtml(fmt(u.email))}</div></div>
-        <div class="col-6"><div class="text-muted small">الهاتف</div><div class="fw-semibold">${escapeHtml(fmt(u.phone))}</div></div>
-        <div class="col-6"><div class="text-muted small">آخر دخول</div><div class="fw-semibold">${fmtDate(u.lastLogin)}</div></div>
-        <div class="col-6"><div class="text-muted small">الملاحظات</div><div class="fw-semibold">${escapeHtml(fmt(u.notes))}</div></div>
-        <div class="col-6"><div class="text-muted small">أُضيف</div><div class="fw-semibold">${fmtDate(u.createdAt)}</div></div>
-        <div class="col-6"><div class="text-muted small">آخر تحديث</div><div class="fw-semibold">${fmtDate(u.updatedAt)}</div></div>
+        <div class="col-6"><div class="text-muted small">البريد</div><div class="fw-semibold">${Utils.escapeHtml(Utils.fmt(u.email))}</div></div>
+        <div class="col-6"><div class="text-muted small">الهاتف</div><div class="fw-semibold">${Utils.escapeHtml(Utils.fmt(u.phone))}</div></div>
+        <div class="col-6"><div class="text-muted small">آخر دخول</div><div class="fw-semibold">${Utils.fmtDate(u.lastLogin)}</div></div>
+        <div class="col-6"><div class="text-muted small">الملاحظات</div><div class="fw-semibold">${Utils.escapeHtml(Utils.fmt(u.notes))}</div></div>
+        <div class="col-6"><div class="text-muted small">أُضيف</div><div class="fw-semibold">${Utils.fmtDate(u.createdAt)}</div></div>
+        <div class="col-6"><div class="text-muted small">آخر تحديث</div><div class="fw-semibold">${Utils.fmtDate(u.updatedAt)}</div></div>
       </div>
       <hr>
       <div class="d-flex gap-2">
@@ -188,7 +185,7 @@ $(function () {
         const form = document.getElementById('frmUser');
         const p1 = $('#password').val() || '';
         const p2 = $('#password2').val() || '';
-        const pwdError = Forms.validatePasswords(p1, p2);   // ✅ استدعِ من Forms
+        const pwdError = Forms.validatePasswords(p1, p2);
         if (pwdError) {
             if (p1.length && p1.length < 6) $('#password')[0].setCustomValidity('short');
             if (p1 !== p2) $('#password2')[0].setCustomValidity('mismatch');
@@ -214,30 +211,28 @@ $(function () {
         req.then(() => {
             bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
             loadUsers();
-            toastSuccess('تم الحفظ');
-        }).catch(handleApiError);
+            Utils.toastSuccess('تم الحفظ');
+        }).catch(Utils.handleApiError);
     });
 
-    // أدوات كلمة المرور (من Forms)
-    Forms.attachPasswordTools($('#password'), $('#btnShowPass'), $('#btnGenPass')); // ✅
+    // أدوات كلمة المرور
+    Forms.attachPasswordTools($('#password'), $('#btnShowPass'), $('#btnGenPass'));
 
     // ---------- Single actions ----------
     window.toggleStatus = function (id) {
-        const u = users.find(x => x.id === id);
-        if (!u) return;
         $.ajax({
             url: `${API.users}/${id}/toggle-status`,
             method: "POST",
             headers: { Authorization: "Bearer " + getToken() }
-        }).then(() => loadUsers()).catch(handleApiError);
+        }).then(() => loadUsers()).catch(Utils.handleApiError);
     };
 
     window.deleteUser = function (id) {
-        confirmDelete('هل تريد حذف المستخدم؟').then(r => {
+        Utils.confirmDelete('هل تريد حذف المستخدم؟').then(r => {
             if (!r.isConfirmed) return;
             apiDelete(`${API.users}/${id}`)
-                .then(() => { loadUsers(); toastSuccess('تم الحذف'); })
-                .catch(handleApiError);
+                .then(() => { loadUsers(); Utils.toastSuccess('تم الحذف'); })
+                .catch(Utils.handleApiError);
         });
     };
 
@@ -246,7 +241,7 @@ $(function () {
         if (!u) return;
         Swal.fire({
             icon: 'question',
-            title: `إعادة تعيين كلمة المرور لـ ${escapeHtml(u.fullName)}`,
+            title: `إعادة تعيين كلمة المرور لـ ${Utils.escapeHtml(u.fullName)}`,
             input: 'password',
             inputLabel: 'أدخل كلمة مرور جديدة (اختياري، اتركه فارغًا للتوليد)',
             showCancelButton: true,
@@ -260,7 +255,7 @@ $(function () {
                     headers: { Authorization: "Bearer " + getToken(), "Content-Type": "application/json" },
                     data: JSON.stringify(res.value)
                 }).then(() => Swal.fire({ icon: 'success', title: 'تم تحديث كلمة المرور' }))
-                    .catch(handleApiError);
+                    .catch(Utils.handleApiError);
             }
         });
     };
@@ -284,7 +279,7 @@ $(function () {
 
     function bulkActivate(state) {
         const ids = getSelectedIds();
-        if (!ids.length) return toastInfo('لم يتم تحديد مستخدمين');
+        if (!ids.length) return Utils.toastInfo('لم يتم تحديد مستخدمين');
 
         const toToggle = users
             .filter(u => ids.includes(u.id) && ((state && u.status !== 'active') || (!state && u.status !== 'inactive')))
@@ -294,18 +289,18 @@ $(function () {
 
         Promise.allSettled(toToggle.map(id =>
             $.ajax({ url: `${API.users}/${id}/toggle-status`, method: "POST", headers: { Authorization: "Bearer " + getToken() } })
-        )).then(() => { loadUsers(); toastSuccess('تم التحديث'); })
-            .catch(handleApiError);
+        )).then(() => { loadUsers(); Utils.toastSuccess('تم التحديث'); })
+            .catch(Utils.handleApiError);
     }
 
     function bulkDelete() {
         const ids = getSelectedIds();
-        if (!ids.length) return toastInfo('لم يتم تحديد مستخدمين');
-        confirmDelete(`حذف ${ids.length} مستخدم؟`).then(r => {
+        if (!ids.length) return Utils.toastInfo('لم يتم تحديد مستخدمين');
+        Utils.confirmDelete(`حذف ${ids.length} مستخدم؟`).then(r => {
             if (!r.isConfirmed) return;
             Promise.allSettled(ids.map(id => apiDelete(`${API.users}/${id}`)))
-                .then(() => { loadUsers(); toastSuccess('تم الحذف'); })
-                .catch(handleApiError);
+                .then(() => { loadUsers(); Utils.toastSuccess('تم الحذف'); })
+                .catch(Utils.handleApiError);
         });
     }
 
@@ -326,8 +321,8 @@ $(function () {
             return apiPut(`${API.users}/${u.id}`, dto);
         });
         Promise.allSettled(updates)
-            .then(() => { loadUsers(); toastSuccess('تم تعيين الدور'); })
-            .catch(handleApiError);
+            .then(() => { loadUsers(); Utils.toastSuccess('تم تعيين الدور'); })
+            .catch(Utils.handleApiError);
     }
 
     // ---------- Import CSV ----------
@@ -337,7 +332,7 @@ $(function () {
         if (!f) return;
         const reader = new FileReader();
         reader.onload = e => {
-            const rows = Forms.parseCsv(e.target.result); // ✅
+            const rows = Forms.parseCsv(e.target.result);
             if (!rows.length) { Swal.fire({ icon: 'info', title: 'لا توجد بيانات صالحة' }); return; }
             Promise.allSettled(rows.map(r => apiPost(API.users, r)))
                 .then(results => {
@@ -346,7 +341,7 @@ $(function () {
                     loadUsers();
                     Swal.fire({ icon: 'success', title: `تم الاستيراد`, text: `ناجح: ${ok} | فشل: ${fail}` });
                 })
-                .catch(handleApiError);
+                .catch(Utils.handleApiError);
         };
         reader.readAsText(f, 'utf-8');
         bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();

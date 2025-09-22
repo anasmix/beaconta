@@ -1,11 +1,26 @@
-// /js/login.js
+﻿// /js/login.js
+// المتطلبات: jQuery + auth.js + api.js + utils.js
+
 $(function () {
+    // لا تعمل هذا الملف إلا داخل صفحة تسجيل الدخول فقط
     const onLoginPage =
         !!document.getElementById('loginForm') ||
         /\/login(\.html)?$/i.test(location.pathname);
 
+    // لو نحن داخل الـ App Shell → تجاهل
     if (!onLoginPage || window.IS_APP_SHELL) return;
 
+    // لو المستخدم مسجّل أصلاً، حوّله بعيدًا عن صفحة اللوجين
+    try {
+        if (typeof isAuthenticated === 'function' && isAuthenticated()) {
+            if (/\/login(\.html)?$/i.test(location.pathname)) {
+                safeRedirect(getReturnUrl() || '/index.html');
+            }
+            return;
+        }
+    } catch { /* ignore */ }
+
+    // تبديل عرض كلمة المرور
     $('#togglePassword').on('click', function () {
         const $pass = $('#password');
         const isPwd = $pass.attr('type') === 'password';
@@ -13,6 +28,7 @@ $(function () {
         $(this).find('i').toggleClass('bi-eye bi-eye-slash');
     });
 
+    // إرسال فورم تسجيل الدخول
     $('#loginForm').on('submit', function (e) {
         e.preventDefault();
 
@@ -33,10 +49,12 @@ $(function () {
         const base = (API.base || '').replace(/\/+$/, '');
         const url = `${base}/Auth/login`;
 
+        // السيرفر قد يعيد التوكن كنص → نطلبه كـ text
         apiPost(url, payload, { auth: false, timeout: 15000, dataType: 'text' })
             .done(function (res) {
+                // يدعم: نص JWT مباشر أو JSON { token: '...' }
                 let token = null;
-                if (typeof res === 'string') token = res.trim();
+                if (typeof res === 'string') token = res;
                 else if (res && typeof res === 'object' && res.token) token = res.token;
 
                 if (!token) throw new Error('الاستجابة لا تحتوي على Token صالح.');
@@ -70,6 +88,7 @@ $(function () {
             });
     });
 
+    // ===== أدوات محلية =====
     function getReturnUrl() {
         const q = new URLSearchParams(location.search);
         const fromQs = q.get('returnUrl') || q.get('return') || q.get('after');

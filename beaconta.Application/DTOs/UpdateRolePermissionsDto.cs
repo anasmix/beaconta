@@ -3,6 +3,6 @@
     public class UpdateRolePermissionsDto
     {
         public int RoleId { get; set; }
-        public List<string> Permissions { get; set; } = new();
+        public List<int> PermissionIds { get; set; } = new();
     }
 }

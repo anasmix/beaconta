@@ -1,63 +1,80 @@
-﻿// =========================
-// Toast + Errors
-// =========================
-const Toast = Swal.mixin({
-    toast: true, position: 'top-start', showConfirmButton: false,
-    timer: 1800, timerProgressBar: true
-});
-const toastSuccess = (m) => Toast.fire({ icon: 'success', title: m });
-const toastInfo = (m) => Toast.fire({ icon: 'info', title: m });
-const toastWarn = (m) => Toast.fire({ icon: 'warning', title: m });
-const toastError = (m) => Toast.fire({ icon: 'error', title: m });
+// /js/utils.js
+var Utils = {
+    escapeHtml: function (unsafe) {
+        if (!unsafe) return '';
+        return String(unsafe)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    },
 
-function handleApiError(xhr) {
-    if (!xhr) return Swal.fire({ icon: 'error', title: 'خطأ', text: 'غير معروف' });
-    if (xhr.status === 401) {
-        Swal.fire({ icon: 'warning', title: 'انتهت الجلسة', text: 'فضلاً قم بتسجيل الدخول' })
-            .then(() => location.href = '/auth/login.html');
-        return;
-    }
-    const msg = (xhr.responseJSON?.message || xhr.responseText || 'حدث خطأ غير متوقع').toString();
-    console.error(xhr);
-    Swal.fire({ icon: 'error', title: 'خطأ', text: msg.substring(0, 500) });
-}
+    fmtDate: function (d) {
+        if (!d) return '—';
+        const date = new Date(d);
+        if (isNaN(date)) return '—';
+        return date.toLocaleDateString('ar-EG') + ' ' +
+            date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    },
 
-// =========================
-// Helpers
-// =========================
-const fmt = (s) => (!s ? '—' : s);
-const fmtDate = (s) => s ? new Date(s).toLocaleString('ar-JO') : '—';
+    statusBadge: function (status) {
+        if (status === 'active') return `<span class="badge bg-success">نشط</span>`;
+        if (status === 'inactive') return `<span class="badge bg-danger">موقوف</span>`;
+        return `<span class="badge bg-secondary">${status}</span>`;
+    },
 
-function escapeHtml(s) {
-    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-function debounce(fn, wait = 300) {
-    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), wait); };
-}
-function saveState(key, obj) { localStorage.setItem(key, JSON.stringify(obj)); }
-function loadState(key, def = {}) { try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; } }
+    roleChip: function (role) {
+        if (!role) return '—';
+        return `<span class="badge bg-primary-subtle text-primary">${role}</span>`;
+    },
 
-function statusBadge(s) {
-    return s === 'active'
-        ? '<span class="badge bg-success-subtle text-success fw-bold">مفعل</span>'
-        : '<span class="badge bg-danger-subtle text-danger fw-bold">معطل</span>';
-}
-function roleChip(name) {
-    return `<span class="role-chip"><i class="bi bi-shield-lock me-1"></i>${escapeHtml(name || '—')}</span>`;
-}
-function loadingSkeleton(rows = 6) {
-    return '<div class="placeholder-glow">' +
-        Array.from({ length: rows }).map(() => '<div class="placeholder col-12 mb-2" style="height: 18px;"></div>').join('') +
-        '</div>';
-}
-function confirmDelete(text = 'هل تريد الحذف؟') {
-    return Swal.fire({ icon: 'warning', title: 'تأكيد', text, showCancelButton: true, confirmButtonText: 'حذف', cancelButtonText: 'إلغاء' });
-}
+    debounce: function (fn, delay = 300) {
+        let timer;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    },
 
-function updateStats(users) {
-    const last24 = Date.now() - 86400000;
-    $('#statTotal').text(users.length);
-    $('#statActive').text(users.filter(u => u.status === 'active').length);
-    $('#statInactive').text(users.filter(u => u.status !== 'active').length);
-    $('#statLastDay').text(users.filter(u => u.lastLogin && new Date(u.lastLogin).getTime() > last24).length);
-}
+    updateStats: function (input) {
+        if (!input) return;
+
+        let total, active, inactive, lastDay;
+        if (Array.isArray(input)) {
+            const users = input;
+            total = users.length;
+            active = users.filter(u => u.status === 'active').length;
+            inactive = users.filter(u => u.status === 'inactive').length;
+            const since = Date.now() - 24 * 3600 * 1000;
+            lastDay = users.filter(u => new Date(u.createdAt).getTime() >= since).length;
+        } else {
+            total = input.totalUsers ?? 0;
+            active = input.activeUsers ?? 0;
+            inactive = input.inactiveUsers ?? 0;
+            lastDay = input.lastDay ?? 0;
+        }
+
+        $("#statTotal, #statTotalUsers").text(total);
+        $("#statActive, #statActiveUsers").text(active);
+        $("#statInactive, #statInactiveUsers").text(inactive);
+        $("#statLastDay").text(lastDay);
+    },
+
+    confirmDelete: async function (msg = "هل أنت متأكد من الحذف؟") {
+        return await Swal.fire({
+            title: msg,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "نعم، احذف",
+            cancelButtonText: "إلغاء",
+            confirmButtonColor: "#d33"
+        });
+    },
+
+    toastSuccess: (msg) => Swal.fire({ icon: 'success', title: msg, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false }),
+    toastError: (msg) => Swal.fire({ icon: 'error', title: msg, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false }),
+    toastInfo: (msg) => Swal.fire({ icon: 'info', title: msg, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false })
+};
+
+window.Utils = Utils;

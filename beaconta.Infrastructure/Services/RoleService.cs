@@ -25,7 +25,7 @@ namespace beaconta.Infrastructure.Services
                     Key = r.Key,
                     Name = r.Name,
                     UsersCount = _context.Users.Count(u => u.RoleId == r.Id),
-                    Permissions = r.Permissions.Select(p => p.Key).ToList(),
+                    PermissionIds = r.Permissions.Select(p => p.PermissionId).ToList(),
                     CreatedAt = r.CreatedAt
                 })
                 .ToListAsync();
@@ -45,7 +45,7 @@ namespace beaconta.Infrastructure.Services
                 Key = role.Key,
                 Name = role.Name,
                 UsersCount = await _context.Users.CountAsync(u => u.RoleId == id),
-                Permissions = role.Permissions.Select(p => p.Key).ToList(),
+                PermissionIds = role.Permissions.Select(p => p.PermissionId).ToList(),
                 CreatedAt = role.CreatedAt
             };
         }
@@ -68,20 +68,32 @@ namespace beaconta.Infrastructure.Services
                 Key = role.Key,
                 Name = role.Name,
                 UsersCount = 0,
-                Permissions = new List<string>(),
+                PermissionIds = new List<int>(),
                 CreatedAt = role.CreatedAt
             };
         }
 
-        public async Task<bool> UpdateNameAsync(int id, string newName)
+        public async Task<RoleDto?> UpdateNameAsync(int id, string newName)
         {
-            var role = await _context.Roles.FindAsync(id);
-            if (role == null) return false;
+            var role = await _context.Roles
+                .Include(r => r.Permissions)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (role == null) return null;
 
             role.Name = newName;
             role.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return true;
+
+            return new RoleDto
+            {
+                Id = role.Id,
+                Key = role.Key,
+                Name = role.Name,
+                UsersCount = await _context.Users.CountAsync(u => u.RoleId == id),
+                PermissionIds = role.Permissions.Select(p => p.PermissionId).ToList(),
+                CreatedAt = role.CreatedAt
+            };
         }
 
         public async Task<bool> DeleteAsync(int id)
@@ -92,29 +104,49 @@ namespace beaconta.Infrastructure.Services
 
             if (role == null) return false;
 
+            // ✅ تحقق إذا مرتبط بمستخدمين
+            bool hasUsers = await _context.Users.AnyAsync(u => u.RoleId == id);
+            if (hasUsers) return false;
+
             _context.RolePermissions.RemoveRange(role.Permissions);
             _context.Roles.Remove(role);
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> UpdatePermissionsAsync(UpdateRolePermissionsDto dto)
+        public async Task<RoleDto?> UpdatePermissionsAsync(UpdateRolePermissionsDto dto)
         {
             var role = await _context.Roles
                 .Include(r => r.Permissions)
                 .FirstOrDefaultAsync(r => r.Id == dto.RoleId);
 
-            if (role == null) return false;
+            if (role == null) return null;
 
             _context.RolePermissions.RemoveRange(role.Permissions);
-            role.Permissions = dto.Permissions.Select(p => new RolePermission
+
+            var permissions = await _context.Permissions
+                .Where(p => dto.PermissionIds.Contains(p.Id))
+                .ToListAsync();
+
+            role.Permissions = permissions.Select(p => new RolePermission
             {
-                Key = p,
-                DisplayName = p
+                RoleId = role.Id,
+                PermissionId = p.Id,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = "system"
             }).ToList();
 
             await _context.SaveChangesAsync();
-            return true;
+
+            return new RoleDto
+            {
+                Id = role.Id,
+                Key = role.Key,
+                Name = role.Name,
+                UsersCount = await _context.Users.CountAsync(u => u.RoleId == role.Id),
+                PermissionIds = role.Permissions.Select(rp => rp.PermissionId).ToList(),
+                CreatedAt = role.CreatedAt
+            };
         }
 
         public async Task<bool> ClonePermissionsAsync(int fromRoleId, int toRoleId)
@@ -130,10 +162,11 @@ namespace beaconta.Infrastructure.Services
             if (fromRole == null || toRole == null) return false;
 
             _context.RolePermissions.RemoveRange(toRole.Permissions);
+
             toRole.Permissions = fromRole.Permissions.Select(p => new RolePermission
             {
-                Key = p.Key,
-                DisplayName = p.DisplayName
+                RoleId = toRoleId,
+                PermissionId = p.PermissionId
             }).ToList();
 
             await _context.SaveChangesAsync();

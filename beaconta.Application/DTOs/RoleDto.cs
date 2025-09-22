@@ -11,8 +11,10 @@
         public string Name { get; set; } = string.Empty;
 
         public int UsersCount { get; set; }
-        public List<string> Permissions { get; set; } = new();
 
-        public DateTime CreatedAt { get; set; }   // ✅ للعرض في الواجهة
+        // بدل strings → IDs
+        public List<int> PermissionIds { get; set; } = new();
+
+        public DateTime CreatedAt { get; set; }
     }
 }

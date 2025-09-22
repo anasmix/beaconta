@@ -8,22 +8,15 @@ namespace beaconta.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")] // تأكد أن التوكن يحمل ClaimTypes.Role = "Admin" (يفضّل وضع Role.Key = "Admin")
+    [Authorize(Roles = "Admin")]
     public class RolesController : ControllerBase
     {
         private readonly IRoleService _service;
+        public RolesController(IRoleService service) { _service = service; }
 
-        public RolesController(IRoleService service)
-        {
-            _service = service;
-        }
-
-        // GET: api/Roles
         [HttpGet]
-        public async Task<IActionResult> GetAll()
-            => Ok(await _service.GetAllAsync());
+        public async Task<IActionResult> GetAll() => Ok(await _service.GetAllAsync());
 
-        // GET: api/Roles/5
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -31,93 +24,83 @@ namespace beaconta.Api.Controllers
             return role == null ? NotFound() : Ok(role);
         }
 
-        // POST: api/Roles
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto?.Name))
                 return BadRequest("اسم المجموعة مطلوب.");
-
             var role = await _service.CreateAsync(dto.Name);
             return Ok(role);
         }
 
-        // PUT: api/Roles/5
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateName(int id, [FromBody] UpdateRoleDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto?.Name))
                 return BadRequest("اسم المجموعة مطلوب.");
 
-            return await _service.UpdateNameAsync(id, dto.Name)
-                ? Ok()
-                : NotFound();
-        }
+            var updatedRole = await _service.UpdateNameAsync(id, dto.Name);
+            if (updatedRole == null)
+                return NotFound();
 
-        // DELETE: api/Roles/5
+            return Ok(updatedRole);
+        }
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
-            => await _service.DeleteAsync(id) ? Ok() : NotFound();
+        {
+            var success = await _service.DeleteAsync(id);
 
-        // PUT: api/Roles/5/permissions
-        // يدعم:
-        // 1) Body = ["Users.View","Users.Edit",...]
-        // 2) Body = { "permissions": ["Users.View","Users.Edit",...] }
+            if (!success)
+                return BadRequest(new { message = "لا يمكن حذف المجموعة (غير موجودة أو مرتبطة بمستخدمين)." });
+
+            return Ok(new { message = "تم الحذف بنجاح." });
+        }
+
+
+        // يقبل body: [1,2,3] أو { permissionIds: [1,2,3] }
         [HttpPut("{id:int}/permissions")]
         public async Task<IActionResult> UpdatePermissions(int id, [FromBody] JsonElement body)
         {
-            List<string> perms;
+            List<int> permIds;
 
             if (body.ValueKind == JsonValueKind.Array)
             {
-                perms = body.EnumerateArray()
-                            .Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() : null)
-                            .Where(s => !string.IsNullOrWhiteSpace(s))
-                            .Cast<string>()
-                            .ToList();
+                permIds = body.EnumerateArray()
+                              .Where(x => x.ValueKind == JsonValueKind.Number)
+                              .Select(x => x.GetInt32()).ToList();
             }
             else if (body.ValueKind == JsonValueKind.Object &&
-                     body.TryGetProperty("permissions", out var p) &&
+                     body.TryGetProperty("permissionIds", out var p) &&
                      p.ValueKind == JsonValueKind.Array)
             {
-                perms = p.EnumerateArray()
-                         .Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() : null)
-                         .Where(s => !string.IsNullOrWhiteSpace(s))
-                         .Cast<string>()
-                         .ToList();
+                permIds = p.EnumerateArray()
+                           .Where(x => x.ValueKind == JsonValueKind.Number)
+                           .Select(x => x.GetInt32()).ToList();
             }
             else
             {
-                return BadRequest("صيغة الطلب غير صحيحة. أرسل مصفوفة مفاتيح أو كائن يحتوي على الحقل permissions.");
+                return BadRequest("صيغة الطلب غير صحيحة.");
             }
 
-            var dto = new UpdateRolePermissionsDto { RoleId = id, Permissions = perms };
-            return await _service.UpdatePermissionsAsync(dto) ? Ok() : NotFound();
+            var dto = new UpdateRolePermissionsDto { RoleId = id, PermissionIds = permIds };
+            var updatedRole = await _service.UpdatePermissionsAsync(dto);
+            return updatedRole == null ? NotFound() : Ok(updatedRole);
         }
 
-        // GET: api/Roles/5/users
         [HttpGet("{id:int}/users")]
         public async Task<IActionResult> GetUsers(int id)
             => Ok(await _service.GetUsersByRoleIdAsync(id));
 
-        // POST: api/Roles/5/clone
         [HttpPost("{id:int}/clone")]
         public async Task<IActionResult> ClonePermissions(int id, [FromBody] CloneRoleDto dto)
         {
-            if (dto == null || dto.FromRoleId <= 0)
-                return BadRequest("fromRoleId مطلوب.");
-            if (dto.FromRoleId == id)
-                return BadRequest("لا يمكن النسخ من نفس المجموعة.");
+            if (dto == null || dto.FromRoleId <= 0) return BadRequest("fromRoleId مطلوب.");
+            if (dto.FromRoleId == id) return BadRequest("لا يمكن النسخ من نفس المجموعة.");
 
-            return await _service.ClonePermissionsAsync(dto.FromRoleId, id)
-                ? Ok()
-                : BadRequest("فشل نسخ الصلاحيات.");
+            var updated = await _service.ClonePermissionsAsync(dto.FromRoleId, id);
+            return updated == null ? BadRequest("فشل نسخ الصلاحيات.") : Ok(updated); // ✅ يرجّع RoleDto
         }
     }
 
-    // DTO لعملية النسخ
-    public class CloneRoleDto
-    {
-        public int FromRoleId { get; set; }
-    }
+    public class CloneRoleDto { public int FromRoleId { get; set; } }
 }

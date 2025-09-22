@@ -7,13 +7,11 @@ $(async function () {
 
     // -------- Helpers ----------
     const setSidebarCount = (n) => {
-        // ✅ استخدم id مخصص في الشريط الجانبي
         const $el = $("#sidebarRoleUsersCount");
         if ($el.length) $el.text(`${n} مستخدم`);
     };
 
     const setModalCount = (n) => {
-        // ✅ استخدم id مخصص داخل المودال
         const $el = $("#modalRoleUsersCount");
         if ($el.length) $el.text(n);
     };
@@ -21,11 +19,12 @@ $(async function () {
     const normalizeRoles = (list) =>
         (list || []).map(r => ({
             ...r,
-            // طبع الحقول لتكون موحدة على الواجهة
             usersCount: typeof r.usersCount === "number" ? r.usersCount : 0,
-            perms: Array.isArray(r.permissions) ? r.permissions : (r.perms || []),
+            // ✅ استخدم permissionIds من السيرفر
+            perms: Array.isArray(r.permissionIds) ? r.permissionIds : (r.perms || []),
             createdAt: r.createdAt ? new Date(r.createdAt) : null
         }));
+
 
     // -------- API loading ----------
     async function loadAll() {
@@ -34,13 +33,17 @@ $(async function () {
             const rawRoles = await apiGet(API.roles);
             roles = normalizeRoles(rawRoles);
 
-            // تجميع الصلاحيات { key, name, items[] }
             const grouped = {};
             flatPermissions.forEach(p => {
                 const cat = p.category || "أخرى";
                 if (!grouped[cat]) grouped[cat] = { key: cat, name: cat, items: [] };
-                grouped[cat].items.push({ key: p.key, name: p.displayName || p.name });
+                grouped[cat].items.push({
+                    id: p.id,       // ✅ خزن الـ id
+                    key: p.key,
+                    name: p.name
+                });
             });
+
             catalog = Object.values(grouped);
         } catch (e) {
             toastError("فشل تحميل البيانات");
@@ -57,7 +60,7 @@ $(async function () {
             const item = $(`
         <div class="role-item ${r.id === selectedRoleId ? "active" : ""}" data-id="${r.id}">
           <div class="d-flex align-items-center justify-content-between">
-            <div class="fw-bold">${escapeHtml(r.name)}</div>
+            <div class="fw-bold">${Utils.escapeHtml(r.name)}</div>
             <span class="tag">${r.usersCount || 0} مستخدم</span>
           </div>
         </div>
@@ -68,7 +71,6 @@ $(async function () {
             $select.append(new Option(`${r.name} (${r.usersCount || 0})`, r.id));
         });
 
-        // لو كنت مفعل Select2
         if ($.fn.select2) {
             $select.off("change").on("change", function () {
                 const id = parseInt($(this).val(), 10);
@@ -79,6 +81,11 @@ $(async function () {
             $select.val(selectedRoleId);
         }
     }
+    function collectCheckedIds() {
+        return $(".perm-item:checked").map((_, el) => Number($(el).data("id"))).get();
+    }
+
+
 
     function buildPermPanel() {
         const $container = $("#permPanel").empty();
@@ -100,8 +107,10 @@ $(async function () {
           <div class="perm-grid mt-2" id="${catId}">
             ${cat.items.map(i => `
               <div class="form-check">
-                <input class="form-check-input perm-item" type="checkbox" data-key="${i.key}" data-cat="${cat.key}">
-                <label class="form-check-label">${i.name}</label>
+               <input class="form-check-input perm-item" type="checkbox"
+       data-id="${i.id}" data-key="${i.key}" data-cat="${cat.key}">
+<label class="form-check-label">${i.name}</label>
+
               </div>
             `).join("")}
           </div>
@@ -122,7 +131,7 @@ $(async function () {
         });
 
         // بحث
-        $("#permSearch").off("input").on("input", debounce(function () {
+        $("#permSearch").off("input").on("input", Utils.debounce(function () {
             const q = this.value.trim();
             $(".perm-cat").show();
             if (!q) { $(".perm-grid .form-check").show(); return; }
@@ -145,43 +154,58 @@ $(async function () {
         $(`.role-item[data-id="${id}"]`).addClass("active");
 
         const role = roles.find(r => r.id === id) || {};
-        // ✅ عدّاد الشريط الجانبي
         setSidebarCount(role.usersCount || 0);
 
-        // إشارات الصلاحيات
         $(".perm-item").prop("checked", false).trigger("change", { bubble: false });
-        (role.perms || []).forEach(k => {
-            $(`.perm-item[data-key="${k}"]`).prop("checked", true).trigger("change", { bubble: false });
+
+        // ✅ حط الـ checkboxes حسب الـ id مش الـ key
+        (role.perms || []).forEach(pid => {
+            $(`.perm-item[data-id="${pid}"]`).prop("checked", true).trigger("change", { bubble: false });
         });
 
         snapshotPerms = [...(role.perms || [])];
-        $("#lastEdited").text(fmtDate(new Date()));
+        $("#lastEdited").text(Utils.fmtDate(new Date()));
     }
+
+
 
     function collectChecked() {
         return $(".perm-item:checked").map((_, el) => $(el).data("key")).get();
     }
 
     async function saveRole(btn) {
-        const perms = collectChecked();
+        const ids = collectCheckedIds();
         Forms.setBtnLoading(btn, true);
         try {
-            // ✅ أرسل الجسم الصحيح
-            await apiPut(API.roles + "/" + selectedRoleId + "/permissions", { permissions: perms });
+            const updatedRole = await apiPut(`${API.roles}/${selectedRoleId}/permissions`, { permissionIds: ids });
+
             const role = roles.find(r => r.id === selectedRoleId);
-            if (role) role.perms = [...perms];
-            snapshotPerms = [...perms];
-            toastSuccess("تم الحفظ بنجاح");
+            if (role && updatedRole && updatedRole.permissionIds) {
+                role.perms = [...updatedRole.permissionIds];
+                snapshotPerms = [...updatedRole.permissionIds];
+            }
+
+            // ✅ خلي الرسالة تظهر دائمًا عند نجاح العملية
+            Utils.toastSuccess("تم الحفظ بنجاح");
+
         } catch (e) {
-            handleApiError(e);
+            if (typeof handleApiError === "function") handleApiError(e);
+            else console.error(e);
         } finally {
             Forms.setBtnLoading(btn, false, '<i class="bi bi-save2 me-1"></i>حفظ التغييرات');
         }
     }
 
+
     function initRolesTable() {
         DTable.build("#rolesTable", {
-            data: roles.map((r, i) => [i + 1, r.name, r.usersCount || 0, (r.perms || []).length, r.createdAt ? fmtDate(r.createdAt) : "-"]),
+            data: roles.map((r, i) => [
+                i + 1,
+                r.name,
+                r.usersCount || 0,
+                (r.permissionIds || []).length,
+                r.createdAt ? Utils.fmtDate(r.createdAt) : "-"
+            ]),
             columns: [
                 { title: "#" },
                 { title: "اسم المجموعة" },
@@ -191,6 +215,7 @@ $(async function () {
             ]
         });
     }
+
 
     function bindEvents() {
         $("#expandAll").on("click", () => $(".perm-grid").slideDown(120));
@@ -213,7 +238,10 @@ $(async function () {
                 renderRolesList();
                 selectRole(role.id);
                 bootstrap.Modal.getInstance(document.getElementById("newRoleModal")).hide();
-            } catch (e) { handleApiError(e); }
+            } catch (e) {
+                if (typeof handleApiError === "function") handleApiError(e);
+                else console.error(e);
+            }
         });
 
         // نسخ صلاحيات
@@ -225,41 +253,92 @@ $(async function () {
         $("#applyClone").on("click", async function () {
             const fromRoleId = parseInt($("#cloneFrom").val(), 10);
             if (!fromRoleId) return;
+
             try {
-                // ⚠️ إذا كان الـ API يتوقع int خام في Body، تأكد أن apiPost يرسل القيمة مباشرة وليس ككائن.
-                await apiPost(API.roles + "/" + selectedRoleId + "/clone", fromRoleId);
-                const src = roles.find(r => r.id === fromRoleId);
+                const updated = await apiPost(`${API.roles}/${selectedRoleId}/clone`, { fromRoleId });
+
+                // ✅ حدّث الكاش المحلي مباشرة
                 const dest = roles.find(r => r.id === selectedRoleId);
-                if (src && dest) dest.perms = [...(src.perms || [])];
-                selectRole(selectedRoleId);
+                if (dest && updated) {
+                    dest.permissionIds = updated.permissionIds || [];
+                    dest.perms = [...dest.permissionIds];
+                }
+
+                selectRole(selectedRoleId); // أعِد رسم الـ checkboxes
                 bootstrap.Modal.getInstance(document.getElementById("cloneRoleModal")).hide();
-            } catch (e) { handleApiError(e); }
+                Utils.toastSuccess("تم نسخ الصلاحيات بنجاح");
+            } catch (e) {
+                Utils.toastError("فشل نسخ الصلاحيات");
+                console.error(e);
+            }
         });
+
 
         // إعادة تسمية
         $("#renameRole").on("click", async () => {
             const r = roles.find(x => x.id === selectedRoleId);
             if (!r) return;
-            const res = await Swal.fire({ title: "إعادة تسمية", input: "text", inputValue: r.name, showCancelButton: true });
-            if (res.isConfirmed) {
-                try { await apiPut(API.roles + "/" + r.id, { name: res.value }); r.name = res.value; renderRolesList(); selectRole(r.id); }
-                catch (e) { handleApiError(e); }
+            const res = await Swal.fire({
+                title: "إعادة تسمية",
+                input: "text",
+                inputValue: r.name,
+                showCancelButton: true
+            });
+
+            if (res.isConfirmed && res.value?.trim()) {
+                try {
+                    const updated = await apiPut(API.roles + "/" + r.id, { name: res.value.trim() });
+
+                    // ✅ حدث الكاش مباشرة
+                    r.name = updated.name;
+                    renderRolesList();
+                    selectRole(r.id);
+
+                    Utils.toastSuccess("تمت إعادة التسمية بنجاح");
+                } catch (e) {
+                    Utils.toastError("فشل في إعادة التسمية");
+                    console.error(e);
+                }
             }
         });
+
 
         // حذف
         $("#deleteRole").on("click", async () => {
             const r = roles.find(x => x.id === selectedRoleId);
             if (!r) return;
-            if (r.usersCount > 0) return Swal.fire({ icon: "info", text: "لا يمكن الحذف والمجموعة مرتبطة بمستخدمين" });
-            const ok = await confirmDelete("هل تريد حذف هذه المجموعة؟");
+
+            if (r.usersCount > 0) {
+                return Swal.fire({
+                    icon: "info",
+                    text: "لا يمكن الحذف والمجموعة مرتبطة بمستخدمين"
+                });
+            }
+
+            const ok = await Utils.confirmDelete("هل تريد حذف هذه المجموعة؟");
             if (ok.isConfirmed) {
                 try {
-                    await apiDelete(API.roles + "/" + r.id);
+                    const res = await apiDelete(API.roles + "/" + r.id);
+
+                    // تحديث الكاش المحلي
                     roles = roles.filter(x => x.id !== r.id);
                     renderRolesList();
-                    if (roles[0]) selectRole(roles[0].id);
-                } catch (e) { handleApiError(e); }
+
+                    if (roles[0]) {
+                        selectRole(roles[0].id);
+                    }
+
+                    Utils.toastSuccess(res.message || "تم حذف المجموعة بنجاح");
+                } catch (e) {
+                    if (typeof handleApiError === "function") {
+                        handleApiError(e);
+                    } else {
+                        console.error(e);
+                    }
+
+                    const msg = e.responseJSON?.message || "فشل حذف المجموعة";
+                    Utils.toastError(msg);
+                }
             }
         });
 
@@ -270,17 +349,14 @@ $(async function () {
                 const users = await apiGet(API.roles + "/" + selectedRoleId + "/users");
                 const role = roles.find(r => r.id === selectedRoleId);
 
-                // تفاصيل المجموعة في المودال
                 $("#roleName").text(role?.name || "غير معروف");
                 setModalCount(users.length);
-                $("#roleCreatedAt").text(role?.createdAt ? fmtDate(role.createdAt) : "-");
+                $("#roleCreatedAt").text(role?.createdAt ? Utils.fmtDate(role.createdAt) : "-");
 
-                // حدّث العدد في الذاكرة والقائمة والعداد الجانبي
                 if (role) role.usersCount = users.length;
                 renderRolesList();
                 selectRole(selectedRoleId);
 
-                // تعبئة الجدول
                 const $tbody = $("#roleUsersTable tbody").empty();
                 if (!users.length) {
                     $tbody.append(`
@@ -295,11 +371,11 @@ $(async function () {
                         $tbody.append(`
               <tr>
                 <td>${idx + 1}</td>
-                <td><i class="bi bi-person-circle me-2 text-primary"></i>${escapeHtml(u.username)}</td>
-                <td>${escapeHtml(u.fullName || "-")}</td>
-                <td>${escapeHtml(u.email || "-")}</td>
-                <td>${escapeHtml(u.phone || "-")}</td>
-                <td>${u.lastLogin ? fmtDate(u.lastLogin) : "-"}</td>
+                <td><i class="bi bi-person-circle me-2 text-primary"></i>${Utils.escapeHtml(u.username)}</td>
+                <td>${Utils.escapeHtml(u.fullName || "-")}</td>
+                <td>${Utils.escapeHtml(u.email || "-")}</td>
+                <td>${Utils.escapeHtml(u.phone || "-")}</td>
+                <td>${u.lastLogin ? Utils.fmtDate(u.lastLogin) : "-"}</td>
                 <td>
                   <span class="badge ${String(u.status).toLowerCase() === "active" ? "bg-success" : "bg-danger"}">
                     ${String(u.status).toLowerCase() === "active" ? "نشط" : "موقوف"}
@@ -312,7 +388,8 @@ $(async function () {
 
                 new bootstrap.Modal("#roleUsersModal").show();
             } catch (e) {
-                handleApiError(e);
+                if (typeof handleApiError === "function") handleApiError(e);
+                else console.error(e);
             }
         });
     }
