@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Application لا يحتاج EF ولا باقات إضافية -->
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\beaconta.Domain\beaconta.Domain.csproj" />
   </ItemGroup>
 

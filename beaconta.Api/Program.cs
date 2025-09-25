@@ -1,5 +1,6 @@
 ﻿using beaconta.Application.Interfaces;
 using beaconta.Infrastructure.Data;
+using beaconta.Infrastructure.Data.Seed;
 using beaconta.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +22,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
-
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IMenuRepository, MenuRepository>();
+builder.Services.AddScoped<IMenuService, MenuService>();
 // Controllers + JSON options (camelCase + منع الدورات المرجعية)
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
@@ -59,6 +62,11 @@ builder.Services.AddCors(opt =>
 });
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<BeacontaDb>();
+    await MenuSeed.SeedMenuAsync(db);
+}
 
 // Swagger على /swagger فقط
 app.UseSwagger();

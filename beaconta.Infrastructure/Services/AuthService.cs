@@ -22,18 +22,40 @@ namespace beaconta.Infrastructure.Services
 
         public async Task<string?> LoginAsync(string username, string password)
         {
-            var user = await _context.Users.Include(u => u.Role)
-                                           .FirstOrDefaultAsync(u => u.Username == username);
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                        .ThenInclude(r => r.Permissions)
+                            .ThenInclude(rp => rp.Permission)
+                .FirstOrDefaultAsync(u => u.Username == username);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
                 return null;
 
-            var claims = new[]
+            // ✅ الكلايمز الأساسية
+            var claims = new List<Claim>
             {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
-                // ✅ استخدام Role.Key بدلاً من Role.Name
-                new Claim(ClaimTypes.Role, user.Role.Key)
+                new Claim("FullName", user.FullName ?? "")
             };
+
+            // ✅ إضافة جميع الأدوار
+            foreach (var role in user.UserRoles.Select(ur => ur.Role))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role.Key));
+            }
+
+            // ✅ إضافة جميع الصلاحيات (ممكن تستخدمها في الـ frontend أو السياسات)
+            var permissions = user.UserRoles
+                .SelectMany(ur => ur.Role.Permissions)
+                .Select(rp => rp.Permission!.Key)
+                .Distinct();
+
+            foreach (var perm in permissions)
+            {
+                claims.Add(new Claim("permission", perm));
+            }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

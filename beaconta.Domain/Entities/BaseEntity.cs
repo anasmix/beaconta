@@ -3,7 +3,9 @@
     public abstract class BaseEntity
     {
         public int Id { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // لا تعطيها قيمة افتراضية هنا نهائيًا!
+        public DateTime CreatedAt { get; set; }
         public string CreatedBy { get; set; } = string.Empty;
 
         public DateTime? UpdatedAt { get; set; }

@@ -1,4 +1,6 @@
-﻿namespace beaconta.Application.DTOs
+﻿ 
+
+namespace beaconta.Application.DTOs
 {
     public class UserUpdateDto
     {
@@ -6,7 +8,8 @@
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
-        public string Status { get; set; } = "active";
-        public int RoleId { get; set; }
+        public string Status { get; set; } = "Active";
+
+        public List<int> RoleIds { get; set; } = new();
     }
 }

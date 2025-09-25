@@ -24,7 +24,7 @@ namespace beaconta.Infrastructure.Services
                     Id = r.Id,
                     Key = r.Key,
                     Name = r.Name,
-                    UsersCount = _context.Users.Count(u => u.RoleId == r.Id),
+                    UsersCount = _context.UserRoles.Count(ur => ur.RoleId == r.Id),
                     PermissionIds = r.Permissions.Select(p => p.PermissionId).ToList(),
                     CreatedAt = r.CreatedAt
                 })
@@ -44,7 +44,7 @@ namespace beaconta.Infrastructure.Services
                 Id = role.Id,
                 Key = role.Key,
                 Name = role.Name,
-                UsersCount = await _context.Users.CountAsync(u => u.RoleId == id),
+                UsersCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == id),
                 PermissionIds = role.Permissions.Select(p => p.PermissionId).ToList(),
                 CreatedAt = role.CreatedAt
             };
@@ -55,7 +55,7 @@ namespace beaconta.Infrastructure.Services
             var role = new Role
             {
                 Name = name,
-                Key = Guid.NewGuid().ToString("N"), // 🔑 توليد مفتاح ثابت
+                Key = Guid.NewGuid().ToString("N"),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -90,7 +90,7 @@ namespace beaconta.Infrastructure.Services
                 Id = role.Id,
                 Key = role.Key,
                 Name = role.Name,
-                UsersCount = await _context.Users.CountAsync(u => u.RoleId == id),
+                UsersCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == id),
                 PermissionIds = role.Permissions.Select(p => p.PermissionId).ToList(),
                 CreatedAt = role.CreatedAt
             };
@@ -104,8 +104,8 @@ namespace beaconta.Infrastructure.Services
 
             if (role == null) return false;
 
-            // ✅ تحقق إذا مرتبط بمستخدمين
-            bool hasUsers = await _context.Users.AnyAsync(u => u.RoleId == id);
+            // تحقق إذا مرتبط بمستخدمين
+            bool hasUsers = await _context.UserRoles.AnyAsync(ur => ur.RoleId == id);
             if (hasUsers) return false;
 
             _context.RolePermissions.RemoveRange(role.Permissions);
@@ -143,7 +143,7 @@ namespace beaconta.Infrastructure.Services
                 Id = role.Id,
                 Key = role.Key,
                 Name = role.Name,
-                UsersCount = await _context.Users.CountAsync(u => u.RoleId == role.Id),
+                UsersCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == role.Id),
                 PermissionIds = role.Permissions.Select(rp => rp.PermissionId).ToList(),
                 CreatedAt = role.CreatedAt
             };
@@ -166,7 +166,9 @@ namespace beaconta.Infrastructure.Services
             toRole.Permissions = fromRole.Permissions.Select(p => new RolePermission
             {
                 RoleId = toRoleId,
-                PermissionId = p.PermissionId
+                PermissionId = p.PermissionId,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = "system"
             }).ToList();
 
             await _context.SaveChangesAsync();
@@ -175,21 +177,22 @@ namespace beaconta.Infrastructure.Services
 
         public async Task<List<UserDto>> GetUsersByRoleIdAsync(int roleId)
         {
-            return await _context.Users
-                .Include(u => u.Role)
-                .Where(u => u.RoleId == roleId)
-                .Select(u => new UserDto
+            return await _context.UserRoles
+                .Where(ur => ur.RoleId == roleId)
+                .Include(ur => ur.User)
+                .Select(ur => new UserDto
                 {
-                    Id = u.Id,
-                    Username = u.Username,
-                    FullName = u.FullName,
-                    Email = u.Email,
-                    Phone = u.Phone,
-                    Status = u.Status,
-                    RoleName = u.Role.Name,
-                    LastLogin = u.LastLogin
+                    Id = ur.User.Id,
+                    Username = ur.User.Username,
+                    FullName = ur.User.FullName,
+                    Email = ur.User.Email,
+                    Phone = ur.User.Phone,
+                    Status = ur.User.Status,
+                    LastLogin = ur.User.LastLogin,
+                    Roles = ur.User.UserRoles.Select(r => r.Role.Name).ToList() // ✅ هنا
                 })
                 .ToListAsync();
         }
+
     }
 }

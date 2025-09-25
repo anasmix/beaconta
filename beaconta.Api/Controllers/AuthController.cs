@@ -1,4 +1,5 @@
 ﻿using beaconta.Application.Interfaces;
+using beaconta.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,11 +19,13 @@ namespace beaconta.Api.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest req)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var token = await _auth.LoginAsync(req.Username, req.Password);
-            if (token == null) return Unauthorized(new { message = "Invalid credentials" });
-            return Ok(token);
+            var token = await _auth.LoginAsync(request.Username, request.Password);
+            if (token == null)
+                return Unauthorized(new { message = "Invalid credentials" });
+
+            return Ok(new { token });
         }
 
         [Authorize]
