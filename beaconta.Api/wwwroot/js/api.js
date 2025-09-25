@@ -2,10 +2,20 @@
 // API (with auth + helpers)
 // =========================
 
+// لو بدك تحدد API يدويًا (مثلاً: "https://localhost:7247/api")
+// خليه فاضي "" عشان auto-detect يشتغل
+const API_OVERRIDE = "";
+
+// auto-detect للـ API base
 const API = {
-    base: "/api",
-    users: "/api/Users",
-    roles: "/api/Roles"
+    get base() {
+        if (API_OVERRIDE) return API_OVERRIDE.replace(/\/+$/, "");
+        // auto: نفس origin + /api
+        return `${location.origin}/api`;
+    },
+    get users() { return this.base + "/Users"; },
+    get roles() { return this.base + "/Roles"; },
+    get auth() { return this.base + "/Auth"; }
 };
 
 // ====== Token helpers (use Auth if present) ======
@@ -46,16 +56,6 @@ function _getJwtPayload(token) {
     try { return JSON.parse(_decodeBase64Url(parts[1])); } catch { return null; }
 }
 
-//function isAuthenticated(clockSkewSec = 30) {
-//    const t = getToken();
-//    if (!t) return false;
-//    const payload = _getJwtPayload(t);
-//    if (!payload) return false;
-//    const nowSec = Math.floor(Date.now() / 1000);
-//    const exp = Number(payload.exp || 0);
-//    return exp > (nowSec - clockSkewSec);
-//}
-
 function _hardLogout(redirectTo = "/login.html") {
     try {
         if (typeof logout === "function") return logout(redirectTo);
@@ -78,7 +78,6 @@ function ensureAuth({ redirect = true } = {}) {
 
 // ====== Core AJAX wrapper ======
 function apiRequest(method, url, data, opts = {}) {
-    // opts: { auth=true, raw=false, headers, contentType, processData, dataType, timeout, redirect }
     const needsAuth = opts.auth !== false;
 
     if (needsAuth && !ensureAuth({ redirect: opts.redirect !== false })) {

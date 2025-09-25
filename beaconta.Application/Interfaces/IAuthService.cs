@@ -1,7 +1,10 @@
-﻿namespace beaconta.Application.Interfaces
+﻿// beaconta.Application/Interfaces/IAuthService.cs
+using beaconta.Application.DTOs;
+
+namespace beaconta.Application.Interfaces
 {
     public interface IAuthService
     {
-        Task<string?> LoginAsync(string username, string password);
+        Task<LoginResponseDto?> LoginAsync(string username, string password);
     }
 }

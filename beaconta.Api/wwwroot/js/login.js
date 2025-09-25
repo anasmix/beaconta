@@ -31,14 +31,12 @@ $(function () {
         const remember = $('#rememberMe').is(':checked');
 
         const base = (API.base || '').replace(/\/+$/, '');
-        const url = `${base}/Auth/login`;
+        const url = API.auth + "/login";
 
-        apiPost(url, payload, { auth: false, timeout: 15000, dataType: 'text' })
+
+        apiPost(url, payload, { auth: false, timeout: 15000, dataType: 'json' }) // ✅ json
             .done(function (res) {
-                let token = null;
-                if (typeof res === 'string') token = res.trim();
-                else if (res && typeof res === 'object' && res.token) token = res.token;
-
+                let token = res?.token || null;
                 if (!token) throw new Error('الاستجابة لا تحتوي على Token صالح.');
 
                 setToken(token, remember);

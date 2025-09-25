@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace beaconta.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitDb : Migration
+    public partial class InitFullDb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -242,7 +242,7 @@ namespace beaconta.Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "CreatedAt", "CreatedBy", "Email", "FullName", "LastLogin", "Notes", "PasswordHash", "Phone", "Status", "UpdatedAt", "UpdatedBy", "Username" },
-                values: new object[] { 1, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "", "System Admin", null, "", "$2a$11$0DFszVYcLOyTz6o4UjD8nuhGgbLMyUZt9xkgqVpuOjQKoe/89Dw6u", "", "Active", null, null, "admin" });
+                values: new object[] { 1, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "", "System Admin", null, "", "$2a$11$PZFFdWWmQ8ysU7gDys7y4Oe47FTaGcIztUbDR1V27R.gU70KCVT1S", "", "Active", null, null, "admin" });
 
             migrationBuilder.InsertData(
                 table: "UserRoles",

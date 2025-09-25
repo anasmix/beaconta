@@ -1,4 +1,6 @@
-﻿using beaconta.Application.Interfaces;
+﻿// beaconta.Infrastructure/Services/AuthService.cs
+using beaconta.Application.DTOs;
+using beaconta.Application.Interfaces;
 using beaconta.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,33 +22,38 @@ namespace beaconta.Infrastructure.Services
             _config = config;
         }
 
-        public async Task<string?> LoginAsync(string username, string password)
+        public async Task<LoginResponseDto?> LoginAsync(string username, string password)
         {
             var user = await _context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                         .ThenInclude(r => r.Permissions)
                             .ThenInclude(rp => rp.Permission)
-                .FirstOrDefaultAsync(u => u.Username == username);
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            if (user == null)
+                return null;
+
+            // التحقق من كلمة السر
+            if (!BCrypt.Net.BCrypt.Verify(password ?? "", user.PasswordHash))
                 return null;
 
             // ✅ الكلايمز الأساسية
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim("FullName", user.FullName ?? "")
-            };
+    {
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Name, user.Username),
+        new Claim("FullName", user.FullName ?? "")
+    };
 
-            // ✅ إضافة جميع الأدوار
+            // ✅ إضافة جميع الأدوار (Key + Name)
             foreach (var role in user.UserRoles.Select(ur => ur.Role))
             {
-                claims.Add(new Claim(ClaimTypes.Role, role.Key));
+                claims.Add(new Claim(ClaimTypes.Role, role.Key));      // "admin"
+                claims.Add(new Claim("role_name", role.Name));         // "Admin"
             }
 
-            // ✅ إضافة جميع الصلاحيات (ممكن تستخدمها في الـ frontend أو السياسات)
+            // ✅ إضافة جميع الصلاحيات
             var permissions = user.UserRoles
                 .SelectMany(ur => ur.Role.Permissions)
                 .Select(rp => rp.Permission!.Key)
@@ -69,7 +76,13 @@ namespace beaconta.Infrastructure.Services
                 signingCredentials: creds
             );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return new LoginResponseDto
+            {
+                Token = new JwtSecurityTokenHandler().WriteToken(token),
+                ExpiresAtUtc = expire
+            };
         }
+
+
     }
 }

@@ -25,14 +25,17 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
 builder.Services.AddScoped<IMenuService, MenuService>();
-// Controllers + JSON options (camelCase + منع الدورات المرجعية)
+
+// Controllers + JSON options
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
     {
+        // الاستجابات تظل camelCase
         opt.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        // لو بدك تحافظ على أسماء enum كنصوص:
-        // opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+        // السماح بقراءة الحقول سواء Username أو username
+        opt.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -51,17 +54,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwt["Issuer"],
             ValidAudience = jwt["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!)),
+            RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        };
+
+        // 🔎 Debug لأسباب الرفض
+        o.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = ctx =>
+            {
+                Console.WriteLine("JWT Error: " + ctx.Exception.Message);
+                return Task.CompletedTask;
+            },
+            OnChallenge = ctx =>
+            {
+                Console.WriteLine("JWT Challenge: " + ctx.ErrorDescription);
+                return Task.CompletedTask;
+            }
         };
     });
+ 
 
-// CORS (اختياري)
+
+// CORS
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
 var app = builder.Build();
+
+// Seed
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BeacontaDb>();
@@ -81,18 +104,36 @@ app.UseSwaggerUI(c =>
 app.MapGet("/", () => Results.Redirect("/login.html"));
 
 // ملفات ثابتة + ملفات افتراضية
-// UseDefaultFiles يفيد لو بدك البحث عن أسماء افتراضية، بس إحنا عاملين تحويلة أعلاه.
 app.UseDefaultFiles(new DefaultFilesOptions
 {
     DefaultFileNames = new List<string> { "login.html" }
 });
 app.UseStaticFiles();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseRouting();
 
-app.UseCors("AllowAll"); // فعّلها إذا الواجهة على دومين/بورت مختلف
+app.UseCors("AllowAll");
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated ?? false)
+    {
+        Console.WriteLine("=== Claims from JWT ===");
+        foreach (var claim in context.User.Claims)
+        {
+            Console.WriteLine($"{claim.Type} = {claim.Value}");
+        }
+    }
+    else
+    {
+        Console.WriteLine("=== No User Authenticated ===");
+    }
+
+    await next();
+});
+
+
 app.UseAuthentication();
 app.UseAuthorization();
 

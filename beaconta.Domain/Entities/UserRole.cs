@@ -1,11 +1,13 @@
-﻿namespace beaconta.Domain.Entities
-{
-    public class UserRole : BaseEntity
-    {
-        public int UserId { get; set; }
-        public User User { get; set; } = null!;
+﻿using beaconta.Domain.Entities;
+ 
 
-        public int RoleId { get; set; }
-        public Role Role { get; set; } = null!;
-    }
+public class UserRole : BaseEntity
+{
+    public int Id { get; set; }   // ✅ Primary Key من BaseEntity
+
+    public int UserId { get; set; }
+    public int RoleId { get; set; }
+
+    public User User { get; set; } = null!;
+    public Role Role { get; set; } = null!;
 }
