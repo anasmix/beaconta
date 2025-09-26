@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>لوحة الإحصاءات — Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap RTL + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{ --radius:16px; --shadow: 0 10px 24px rgba(16,24,40,.10); }
+    body{ background:transparent; }
+    .card{ border:0; border-radius: var(--radius); box-shadow: var(--shadow); background:#fff; }
+    @media (prefers-color-scheme: dark){ .card{ background: rgba(255,255,255,.06); } }
+
+    /* عنوان */
+    .muted{ color:#6b7280 }
+    .chip{ border-radius:999px; padding:.25rem .6rem; font-size:.8rem; background:#f1f5f9; color:#0f172a; }
+
+    /* روابط سريعة (شريط صغير) */
+    .quick-links{ overflow-x:auto; padding:.25rem .1rem; gap:.5rem; }
+    .qlink{
+      display:flex; align-items:center; gap:6px; background:#f8fafc;
+      padding:.4rem .75rem; border-radius:12px; text-decoration:none; color:#0f172a;
+      font-size:.9rem; white-space:nowrap; border:1px solid #eef2f7; transition:.18s;
+      flex:0 0 auto;
+    }
+    .qlink i{ font-size:1rem; }
+    .qlink:hover{ background:#eef2f7; }
+    @media (prefers-color-scheme: dark){
+      .qlink{ background:rgba(255,255,255,.08); color:#f1f5f9; border-color:rgba(255,255,255,.12); }
+      .qlink:hover{ background:rgba(255,255,255,.15); }
+    }
+
+    /* KPI */
+    .kpi{ display:flex; align-items:center; gap:14px; }
+    .kpi .ico{ width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; }
+
+    /* أقسام */
+    .section-title{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:.25rem; }
+    .table> :not(caption)>*>* { border-bottom-color: #eef2f7; }
+
+    /* تايملاين */
+    .timeline{ position:relative; padding-inline-start:18px; }
+    .timeline::before{ content:""; position:absolute; inset-inline-start:6px; top:2px; bottom:2px; width:2px; background:#e5e7eb; }
+    .tl-item{ position:relative; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed #eef2f7; }
+    .tl-item:last-child{ border-bottom:0; margin-bottom:0; padding-bottom:0; }
+    .tl-item::before{ content:""; position:absolute; inset-inline-start:-2px; top:.35rem; width:10px; height:10px; border-radius:50%; background:#4f46e5; box-shadow:0 0 0 2px #eef2ff; }
+
+    /* Grid بسيطة متجاوبة */
+    .grid{ display:grid; gap:12px; grid-template-columns: repeat(12, 1fr); }
+    .col-12-12{ grid-column: span 12; }
+    .col-12-8 { grid-column: span 8; }
+    .col-12-4 { grid-column: span 4; }
+    .col-12-6 { grid-column: span 6; }
+    @media (max-width: 991.98px){ .col-12-8, .col-12-4, .col-12-6 { grid-column: span 12; } }
+  </style>
+</head>
+<body>
+<div class="container-fluid p-3 p-md-4">
+
+  <!-- العنوان -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
+    <div>
+      <h4 class="mb-0">لوحة الإحصاءات</h4>
+      <div class="text-muted small">نظرة عامة يومية — بيانات تجريبية قابلة للربط لاحقًا</div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span id="todayLabel" class="chip"></span>
+    </div>
+  </div>
+
+  <!-- روابط سريعة (شريط صغير لا يأخذ مساحة) -->
+  <div class="quick-links d-flex mb-3">
+    <!-- كل رابط يرسل طلب فتح تبويب إلى index.html -->
+    <a href="#" class="qlink" data-open='{"id":"contract-family-adv","title":"عقد عائلة — خصومات & أقساط","url":"pages/family-contract-discounts.html"}'>
+      <i class="bi bi-stars"></i><span>عقد عائلة</span>
+    </a>
+    <a href="#" class="qlink" data-open='{"id":"contracts-list","title":"سجلات العقود","url":"pages/contracts-list.html"}'>
+      <i class="bi bi-card-list"></i><span>سجلات العقود</span>
+    </a>
+    <a href="#" class="qlink" data-open='{"id":"students-list","title":"قائمة الطلاب","url":"pages/students.html"}'>
+      <i class="bi bi-people"></i><span>الطلاب</span>
+    </a>
+    <a href="#" class="qlink" data-open='{"id":"payments","title":"دفعات الأقساط","url":"pages/payments.html"}'>
+      <i class="bi bi-cash-coin"></i><span>المدفوعات</span>
+    </a>
+    <a href="#" class="qlink" data-open='{"id":"reports","title":"تقارير مالية","url":"pages/reports.html"}'>
+      <i class="bi bi-graph-up"></i><span>التقارير</span>
+    </a>
+    <a href="#" class="qlink" data-open='{"id":"student-new","title":"إضافة طالب","url":"pages/student-new.html"}'>
+      <i class="bi bi-person-plus"></i><span>إضافة طالب</span>
+    </a>
+    <a href="#" class="qlink" data-open='{"id":"settings-general","title":"إعدادات عامة","url":"pages/settings-general.html"}'>
+      <i class="bi bi-gear"></i><span>الإعدادات</span>
+    </a>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+      <div class="card p-3">
+        <div class="kpi">
+          <div class="ico bg-primary bg-opacity-10 text-primary"><i class="bi bi-buildings fs-5"></i></div>
+          <div><div class="muted">عدد المدارس</div><div id="kpiSchools" class="fs-5 fw-bold">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card p-3">
+        <div class="kpi">
+          <div class="ico bg-info bg-opacity-10 text-info"><i class="bi bi-grid-3x3-gap fs-5"></i></div>
+          <div><div class="muted">إجمالي الصفوف</div><div id="kpiClasses" class="fs-5 fw-bold">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card p-3">
+        <div class="kpi">
+          <div class="ico bg-success bg-opacity-10 text-success"><i class="bi bi-person-badge fs-5"></i></div>
+          <div><div class="muted">عدد الموظفين</div><div id="kpiEmployees" class="fs-5 fw-bold">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card p-3">
+        <div class="kpi">
+          <div class="ico bg-warning bg-opacity-10 text-warning"><i class="bi bi-people fs-5"></i></div>
+          <div><div class="muted">عدد الطلاب</div><div id="kpiStudents" class="fs-5 fw-bold">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- شبكة المحتوى الرئيسية -->
+  <div class="grid mb-3">
+    <!-- الصفوف لكل مدرسة (bar) -->
+    <div class="col-12-8">
+      <div class="card p-3">
+        <div class="section-title">
+          <div class="fw-bold">عدد الصفوف في كل مدرسة</div>
+          <div class="text-muted small">أعلى 8 مدارس</div>
+        </div>
+        <canvas id="classesPerSchool" height="140"></canvas>
+      </div>
+    </div>
+
+    <!-- حضور الموظفين اليومي -->
+    <div class="col-12-4">
+      <div class="card p-3">
+        <div class="section-title">
+          <div class="fw-bold">حضور الموظفين — اليوم</div>
+          <div class="text-muted small">حاضر / غائب / متأخر</div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <div class="flex-shrink-0" style="width:160px">
+            <canvas id="attendanceDonut" height="160"></canvas>
+          </div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between"><span class="muted">حاضر</span><span id="attPresent" class="fw-bold">—</span></div>
+            <div class="d-flex justify-content-between"><span class="muted">غائب</span><span id="attAbsent" class="fw-bold">—</span></div>
+            <div class="d-flex justify-content-between"><span class="muted">متأخر</span><span id="attLate" class="fw-bold">—</span></div>
+          </div>
+        </div>
+        <div class="table-responsive mt-3">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr><th>القسم</th><th>حاضر</th><th>غائب</th><th>متأخر</th></tr>
+            </thead>
+            <tbody id="attTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- صف ثانوي: آخر العمليات + الزوار -->
+  <div class="grid">
+    <!-- آخر العمليات -->
+    <div class="col-12-6">
+      <div class="card p-3">
+        <div class="section-title">
+          <div class="fw-bold">آخر العمليات على النظام</div>
+          <a href="#" class="text-decoration-none small">عرض الكل</a>
+        </div>
+        <div id="opsList" class="timeline"></div>
+      </div>
+    </div>
+
+    <!-- سجل الزوار اليومي -->
+    <div class="col-12-6">
+      <div class="card p-3">
+        <div class="section-title">
+          <div class="fw-bold">سجل الزوّار — اليوم</div>
+          <div class="chip"><span id="visitorsCount">—</span> زائر</div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr><th>الوقت</th><th>الاسم</th><th>الغرض</th><th>المدرسة</th></tr>
+            </thead>
+            <tbody id="visitorsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ----------------------- فتح تبويب من الروابط السريعة ----------------------- */
+document.addEventListener('click', (e)=>{
+  const a = e.target.closest('[data-open]');
+  if(!a) return;
+  e.preventDefault();
+  try{
+    const payload = JSON.parse(a.getAttribute('data-open'));
+    window.parent?.postMessage({ type:'openTab', ...payload }, '*');
+  }catch(err){}
+});
+
+/* ----------------------- بيانات تجريبية (Mock) ----------------------- */
+const mock = (() => {
+  const schools = [
+    { id:1, name:'مدرسة اليرموك', classes: 28 },
+    { id:2, name:'مدرسة الأقصى', classes: 24 },
+    { id:3, name:'مدرسة القادسية', classes: 19 },
+    { id:4, name:'مدرسة الحكمة', classes: 31 },
+    { id:5, name:'مدرسة النهضة', classes: 22 },
+    { id:6, name:'مدرسة الأوائل', classes: 17 },
+    { id:7, name:'مدرسة الاستقلال', classes: 26 },
+    { id:8, name:'مدرسة النور', classes: 21 },
+    { id:9, name:'مدرسة الإحسان', classes: 15 }
+  ];
+  const employees = 184;
+  const students  = 2360;
+  const attendance = {
+    totals: { present:142, absent:23, late:19 },
+    byDept: [
+      { dept:'الإدارة',   present:18,  absent:2, late:1 },
+      { dept:'المعلمين',  present:98,  absent:18, late:14 },
+      { dept:'الخدمات',   present:26,  absent:3, late:4 }
+    ]
+  };
+  const operations = [
+    { time:'08:12', actor:'شؤون الطلاب',   text:'تسجيل 3 طلاب بمدرسة اليرموك (الصف الخامس).' },
+    { time:'08:25', actor:'المحاسبة',      text:'اعتماد دفعة أقساط 420 د.أ لعقد #A-1022.' },
+    { time:'09:05', actor:'شؤون الموظفين', text:'إجازة مرضية لموظف لمدة يومين.' },
+    { time:'10:17', actor:'المقصف',        text:'إضافة أصناف جديدة للأسبوع الحالي.' },
+    { time:'11:02', actor:'الإدارة',       text:'تحديث سياسة الخصومات العائلية.' }
+  ];
+  const visitors = [
+    { time:'08:40', name:'خالد العبدالله', purpose:'مقابلة المدير', school:'اليرموك' },
+    { time:'09:10', name:'وليد الخطيب',    purpose:'استفسار تسجيل', school:'الأقصى' },
+    { time:'10:05', name:'سلوى الحاج',     purpose:'متابعة تحصيل',  school:'القادسية' },
+    { time:'11:20', name:'عمر المصري',     purpose:'زيارة صيانة',   school:'الحكمة' },
+    { time:'12:05', name:'رائد عصفور',     purpose:'تسليم مستندات', school:'النهضة' }
+  ];
+  return { schools, employees, students, attendance, operations, visitors };
+})();
+
+/* ----------------------- تعبئة البطاقات ----------------------- */
+const $ = (id)=> document.getElementById(id);
+function fillKpis(){
+  $('kpiSchools').textContent   = mock.schools.length.toString();
+  $('kpiClasses').textContent   = mock.schools.reduce((a,s)=>a+s.classes,0).toLocaleString();
+  $('kpiEmployees').textContent = mock.employees.toLocaleString();
+  $('kpiStudents').textContent  = mock.students.toLocaleString();
+
+  const today = new Date();
+  $('todayLabel').textContent = today.toLocaleDateString('ar-JO', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+
+/* ----------------------- الصفوف لكل مدرسة (Bar) ----------------------- */
+let classesChart;
+function drawClassesPerSchool(){
+  const top = [...mock.schools].sort((a,b)=>b.classes-a.classes).slice(0,8);
+  const labels = top.map(s=>s.name);
+  const data   = top.map(s=>s.classes);
+
+  const ctx = document.getElementById('classesPerSchool');
+  if(classesChart) classesChart.destroy();
+  classesChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets:[{ label:'عدد الصفوف', data, borderWidth:1 }] },
+    options: {
+      responsive:true,
+      plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label:(c)=> c.parsed.y+' صف' } } },
+      scales: { y: { beginAtZero:true, ticks:{ stepSize:5 } } }
+    }
+  });
+}
+
+/* ----------------------- الحضور (Donut + جدول) ----------------------- */
+let attChart;
+function drawAttendance(){
+  const { totals, byDept } = mock.attendance;
+
+  $('attPresent').textContent = totals.present.toLocaleString();
+  $('attAbsent').textContent  = totals.absent.toLocaleString();
+  $('attLate').textContent    = totals.late.toLocaleString();
+
+  const ctx = document.getElementById('attendanceDonut');
+  if(attChart) attChart.destroy();
+  attChart = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels:['حاضر','غائب','متأخر'], datasets:[{ data:[totals.present, totals.absent, totals.late] }] },
+    options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } }
+  });
+
+  $('attTable').innerHTML = byDept.map(r=>`
+    <tr>
+      <td>${r.dept}</td>
+      <td class="text-success fw-semibold">${r.present}</td>
+      <td class="text-danger fw-semibold">${r.absent}</td>
+      <td class="text-warning fw-semibold">${r.late}</td>
+    </tr>
+  `).join('');
+}
+
+/* ----------------------- آخر العمليات + الزوار ----------------------- */
+function fillOperations(){
+  $('opsList').innerHTML = mock.operations.map(op=>`
+    <div class="tl-item">
+      <div class="d-flex justify-content-between">
+        <div class="fw-bold">${op.actor}</div>
+        <div class="text-muted small">${op.time}</div>
+      </div>
+      <div class="text-muted">${op.text}</div>
+    </div>
+  `).join('');
+}
+function fillVisitors(){
+  $('visitorsCount').textContent = mock.visitors.length.toString();
+  $('visitorsTable').innerHTML = mock.visitors.map(v=>`
+    <tr><td>${v.time}</td><td>${v.name}</td><td>${v.purpose}</td><td>${v.school}</td></tr>
+  `).join('');
+}
+
+/* ----------------------- إقلاع ----------------------- */
+(function boot(){
+  fillKpis();
+  drawClassesPerSchool();
+  drawAttendance();
+  fillOperations();
+  fillVisitors();
+})();
+</script>
+</body>
+</html>

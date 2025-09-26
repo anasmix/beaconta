@@ -19,5 +19,9 @@ namespace beaconta.Api.Controllers
             var data = await _menu.GetMenuForCurrentUserAsync(ct);
             return Ok(data);
         }
+
+
+
+
     }
 }

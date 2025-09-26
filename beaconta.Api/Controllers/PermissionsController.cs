@@ -6,7 +6,7 @@ namespace beaconta.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "admin")]
     public class PermissionsController : ControllerBase
     {
         private readonly IPermissionService _service;

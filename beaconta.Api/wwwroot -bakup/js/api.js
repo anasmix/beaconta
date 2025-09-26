@@ -67,19 +67,6 @@ function _hardLogout(redirectTo = "/login.html") {
     localStorage.removeItem("pv");
     window.location.href = redirectTo;
 }
-function isAuthenticated() {
-    const t = getToken();
-    if (!t) return false;
-
-    const payload = _getJwtPayload(t);
-    if (!payload) return false;
-
-    // لو انتهت صلاحية التوكن (exp بالـ JWT)
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) return false;
-
-    return true;
-}
 
 function ensureAuth({ redirect = true } = {}) {
     if (!isAuthenticated()) {
@@ -137,16 +124,3 @@ $.ajaxSetup({
         401: function () { _hardLogout("/login.html"); }
     }
 });
-
-// =========================
-// API Wrapper موحّد
-// =========================
-const Api = {
-    get: (url, opts) => apiGet(API.base + url, opts),
-    post: (url, data, opts) => apiPost(API.base + url, data, opts),
-    put: (url, data, opts) => apiPut(API.base + url, data, opts),
-    delete: (url, opts) => apiDelete(API.base + url, opts)
-};
-
-// ✅ توحيد التصدير (عشان يتوفر في window)
-window.Api = Api;

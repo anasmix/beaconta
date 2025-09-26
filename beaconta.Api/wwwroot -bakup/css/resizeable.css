@@ -1,0 +1,11 @@
+/* resizeable.css */
+/* مخصص لعناصر قابلة لتغيير الحجم */
+
+.resizeable {
+  resize: both;
+  overflow: auto;
+  border: 1px dashed #888;
+  padding: 10px;
+  min-width: 100px;
+  min-height: 100px;
+}

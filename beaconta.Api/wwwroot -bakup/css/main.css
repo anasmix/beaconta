@@ -1,0 +1,20 @@
+﻿/* main.css */
+/* ملف الأنماط الرئيسي لتنسيق عام للنظام */
+
+body {
+    font-family: "Cairo", sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    padding: 0;
+    direction: rtl;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+}

@@ -678,18 +678,33 @@
                 </div>
 
                 <!-- الصف السفلي: تنقّل أيقوني قابل للتمرير -->
-                <!-- Nav Scroller -->
                 <nav class="nav-scroller">
-                    <ul id="mainTabs" class="nav nav-pills nav-pills-icons"></ul>
+                    <ul id="mainTabs" class="nav nav-pills nav-pills-icons">
+                        <li class="nav-item"><a class="nav-link active" data-main="dashboard" href="#"><i class="bi bi-speedometer2"></i><span>الرئيسية</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="schoolYears" href="#"><i class="bi bi-calendar3"></i><span>إدارة السنوات الدراسية</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="schools" href="#"><i class="bi bi-calendar3"></i><span>المدارس</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="students" href="#"><i class="bi bi-people"></i><span>الطلاب</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="academia" href="#"><i class="bi bi-book"></i><span>الأكاديمية </span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="contracts" href="#"><i class="bi bi-file-earmark-text"></i><span>العقود</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="finance" href="#"><i class="bi bi-cash-coin"></i><span>المالية</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="hr" href="#"><i class="bi bi-person-badge"></i><span>شؤون الموظفين</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="transport" href="#"><i class="bi bi-bus-front"></i><span>المواصلات</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="warehouses" href="#"><i class="bi bi-box-seam"></i><span>المستودعات</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="archiving" href="#"><i class="bi bi-archive"></i><span>الأرشفة</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="notes" href="#"><i class="bi bi-journal-text"></i><span>الملاحظات والقضايا</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="circulars" href="#"><i class="bi bi-envelope-open"></i><span>التعاميم الإدارية</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="permissions" href="#"><i class="bi bi-shield-lock"></i><span>الصلاحيات</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="monitoring" href="#"><i class="bi bi-graph-up"></i><span>المراقبة</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="centralReports" href="#"><i class="bi bi-bar-chart-line"></i><span>نظام التقارير المركزي</span></a></li>
+                        <li class="nav-item"><a class="nav-link" data-main="upperManagement" href="#"><i class="bi bi-graph-up-arrow"></i><span>الإدارة العليا</span></a></li>
+                    </ul>
                 </nav>
-
             </div>
         </header>
 
         <!-- Layout -->
         <div class="layout container-fluid">
             <!-- Sidebar (Desktop) -->
-            <!-- Sidebar -->
             <aside class="sidebar desktop-sidebar">
                 <div class="search">
                     <i class="bi bi-search"></i>
@@ -697,7 +712,6 @@
                 </div>
                 <div id="sidebar"></div>
             </aside>
-
 
             <!-- Workspace -->
             <section class="workspace">
@@ -713,8 +727,7 @@
 
     </div>
 
-
-    <!-- Drawer (Mobile) -->
+    <!-- Drawer Sidebar (Mobile) -->
     <div id="drawer" class="drawer" aria-hidden="true">
         <div class="drawer-header">
             <strong>القائمة</strong>
@@ -727,25 +740,43 @@
             </div>
             <div id="sidebarMobile"></div>
             <hr>
-            <ul id="mainTabsMobile" class="nav nav-pills"></ul>
+            <ul id="mainTabsMobile" class="nav nav-pills">
+                <li class="nav-item"><a class="nav-link active" data-main="dashboard" href="#">الرئيسية</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="schoolYears" href="#">إدارة السنوات الدراسية</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="students" href="#">الطلاب</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="academia" href="#">الأكاديمية </a></li>
+                <li class="nav-item"><a class="nav-link" data-main="contracts" href="#">العقود</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="finance" href="#">المالية</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="hr" href="#">شؤون الموظفين</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="transport" href="#">المواصلات</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="warehouses" href="#">المستودعات</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="archiving" href="#">الأرشفة</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="notes" href="#">الملاحظات والقضايا</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="circulars" href="#">التعاميم الإدارية</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="permissions" href="#">الصلاحيات</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="monitoring" href="#">المراقبة</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="centralReports" href="#">نظام التقارير المركزي</a></li>
+                <li class="nav-item"><a class="nav-link" data-main="upperManagement" href="#">الإدارة العليا</a></li>
+            </ul>
         </div>
     </div>
 
-    <!-- أدوات أساسية -->
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+    <!-- ====== Scripts: jQuery + Popper + Bootstrap 4 + Material + Toastr ====== -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
     <script src="https://unpkg.com/bootstrap-material-design@4.1.1/dist/js/bootstrap-material-design.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- ملفاتك المحلية -->
+    <!-- JS مشتركة -->
+    <script src="js/api.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/api.js"></script> <!-- ⚠️ لازم ييجي هنا قبل أي ملف يستخدم Api -->
+    <script src="js/auth.js"></script>
     <script src="js/forms.js"></script>
-    <script src="js/menu-dynamic.js"></script> <!-- ييجي بعد api.js -->
     <script src="js/home.js"></script>
 
+    <!-- ✅ تحميل القوائم الديناميكية -->
+    <script src="js/menu-dynamic.js"></script>
 
     <script>
         /* ===== تفعيل Bootstrap Material Design ===== */
@@ -807,12 +838,12 @@
             sec.groups.forEach((g, gi) => {
                 const box = document.createElement('div'); box.className = 'group';
                 box.innerHTML = `
-                                    <div class="group-header" data-toggle="${gi}">
-                                      <div class="group-title">${g.title}</div>
-                                      <i class="bi bi-chevron-down"></i>
-                                    </div>
-                                    <div class="group-items"></div>
-                                  `;
+                <div class="group-header" data-toggle="${gi}">
+                  <div class="group-title">${g.title}</div>
+                  <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="group-items"></div>
+              `;
                 const wrap = box.querySelector('.group-items');
                 g.items.forEach(it => {
                     const row = document.createElement('div');
@@ -848,11 +879,11 @@
                 chip.className = `chip ${t.active ? 'active' : ''} ${t.dirty ? 'dirty' : ''} animate__animated animate__fadeIn`;
                 chip.dataset.tab = t.id;
                 chip.innerHTML = `
-                                    <span class="dot"></span>
-                                    <i class="bi bi-window-stack"></i>
-                                    <span>${t.title}</span>
-                                    <button class="close" title="إغلاق"><i class="bi bi-x-lg"></i></button>
-                                  `;
+                <span class="dot"></span>
+                <i class="bi bi-window-stack"></i>
+                <span>${t.title}</span>
+                <button class="close" title="إغلاق"><i class="bi bi-x-lg"></i></button>
+              `;
                 chip.addEventListener('click', (e) => {
                     if (e.target.closest('.close')) { tryClose(t.id); return; }
                     activateTab(t.id);
@@ -1003,46 +1034,20 @@
         });
 
         /* ===== إقلاع ===== */
-        //(function boot() {
-        //    load();
-        //    buildSidebar(document.getElementById('sidebar'));
-        //    buildSidebar(document.getElementById('sidebarMobile'));
-        //    state.tabs.forEach(t => ensureFrame(t));
-        //    if (state.tabs.length === 0) {
-        //        // On first load, open the home tab. Use the dashboard overview ID so that
-        //        // the URL convention described in ensureFrame() applies correctly.
-        //        openTab({ id: 'dashboard-overview', title: 'الرئيسية', url: 'pages/dashboard.html' });
-        //    } else {
-        //        renderTabs();
-        //    }
-        //    syncThemeIcon();
-        //})();
-
-        function boot(fromApi = false) {
+        (function boot() {
             load();
-
-            if (!fromApi) {
-                // إذا ما إجا من API، جرّب استعمل fallback
-                if (!window.MENU || Object.keys(window.MENU).length === 0) {
-                    console.warn("⚠️ API menu not available, using fallback");
-                    window.MENU = window.MENU_FALLBACK || {};
-                }
-            }
-
             buildSidebar(document.getElementById('sidebar'));
             buildSidebar(document.getElementById('sidebarMobile'));
-
             state.tabs.forEach(t => ensureFrame(t));
             if (state.tabs.length === 0) {
+                // On first load, open the home tab. Use the dashboard overview ID so that
+                // the URL convention described in ensureFrame() applies correctly.
                 openTab({ id: 'dashboard-overview', title: 'الرئيسية', url: 'pages/dashboard.html' });
             } else {
                 renderTabs();
             }
             syncThemeIcon();
-        }
-
-        // شغّله مبدئياً
-        boot();
+        })();
 
         /* ==== اختيار السنة الدراسية ==== */
         const yearSelectEl = document.getElementById('ddlSchoolYear');
@@ -1087,13 +1092,13 @@
                     bar = document.createElement('div');
                     bar.id = 'fullscreenBar';
                     bar.innerHTML = `
-                                    <div class="bar-content">
-                                      <i class="bi bi-arrows-angle-contract"></i>
-                                      <span>وضع ملء الشاشة</span>
-                                      <button id="exitFullscreenBtn" class="close-cta">
-                                        <i class="bi bi-x-lg"></i> إنهاء ملء الشاشة
-                                      </button>
-                                    </div>`;
+                <div class="bar-content">
+                  <i class="bi bi-arrows-angle-contract"></i>
+                  <span>وضع ملء الشاشة</span>
+                  <button id="exitFullscreenBtn" class="close-cta">
+                    <i class="bi bi-x-lg"></i> إنهاء ملء الشاشة
+                  </button>
+                </div>`;
                     document.body.appendChild(bar);
                 }
                 // كِلِك على الشريط أو الزر = خروج
