@@ -26,8 +26,8 @@ namespace beaconta.Infrastructure.Services
             var user = await _context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
-                        .ThenInclude(r => r.Permissions)
-                            .ThenInclude(rp => rp.MenuItem) // 🔴 بدل Permission
+                        .ThenInclude(r => r.RolePermissions)
+                            .ThenInclude(rp => rp.Permission) // ✅ بدل MenuItem
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
 
             if (user == null)
@@ -52,10 +52,10 @@ namespace beaconta.Infrastructure.Services
                 claims.Add(new Claim("role_name", role.Name));     // "Admin"
             }
 
-            // ✅ إضافة جميع الصلاحيات (ItemKey من MenuItem)
+            // ✅ إضافة جميع الصلاحيات (Permission.Key من جدول Permissions)
             var permissions = user.UserRoles
-                .SelectMany(ur => ur.Role.Permissions)
-                .Select(rp => rp.MenuItem.ItemKey) // 🔴 بدل Permission.Key
+                .SelectMany(ur => ur.Role.RolePermissions)
+                .Select(rp => rp.Permission.Key) // 🔴 الآن من جدول Permissions
                 .Distinct();
 
             foreach (var perm in permissions)

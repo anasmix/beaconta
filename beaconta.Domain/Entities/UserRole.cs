@@ -1,10 +1,7 @@
 ﻿using beaconta.Domain.Entities;
- 
 
 public class UserRole : BaseEntity
 {
-    public int Id { get; set; }   // ✅ Primary Key من BaseEntity
-
     public int UserId { get; set; }
     public int RoleId { get; set; }
 

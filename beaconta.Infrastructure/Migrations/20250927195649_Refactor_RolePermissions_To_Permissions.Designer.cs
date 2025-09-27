@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using beaconta.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using beaconta.Infrastructure.Data;
 namespace beaconta.Infrastructure.Migrations
 {
     [DbContext(typeof(BeacontaDb))]
-    partial class BeacontaDbModelSnapshot : ModelSnapshot
+    [Migration("20250927195649_Refactor_RolePermissions_To_Permissions")]
+    partial class Refactor_RolePermissions_To_Permissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -27,7 +30,7 @@ namespace beaconta.Infrastructure.Migrations
                     b.Property<int>("RoleId")
                         .HasColumnType("int");
 
-                    b.Property<int>("PermissionId")
+                    b.Property<int>("MenuItemId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -46,9 +49,9 @@ namespace beaconta.Infrastructure.Migrations
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("RoleId", "PermissionId");
+                    b.HasKey("RoleId", "MenuItemId");
 
-                    b.HasIndex("PermissionId");
+                    b.HasIndex("MenuItemId");
 
                     b.ToTable("RolePermissions");
                 });
@@ -208,8 +211,9 @@ namespace beaconta.Infrastructure.Migrations
                     b.Property<int>("MenuItemId")
                         .HasColumnType("int");
 
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("int");
+                    b.Property<string>("PermissionKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -220,8 +224,6 @@ namespace beaconta.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("MenuItemId");
-
-                    b.HasIndex("PermissionId");
 
                     b.ToTable("MenuItemPermissions");
                 });
@@ -266,43 +268,6 @@ namespace beaconta.Infrastructure.Migrations
                     b.ToTable("MenuSections");
                 });
 
-            modelBuilder.Entity("beaconta.Domain.Entities.Permission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Permissions");
-                });
-
             modelBuilder.Entity("beaconta.Domain.Entities.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -340,8 +305,8 @@ namespace beaconta.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedBy = "system",
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedBy = "",
                             Key = "admin",
                             Name = "Admin"
                         });
@@ -407,8 +372,8 @@ namespace beaconta.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CreatedBy = "system",
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedBy = "",
                             Email = "",
                             FullName = "System Admin",
                             Notes = "",
@@ -421,19 +386,19 @@ namespace beaconta.Infrastructure.Migrations
 
             modelBuilder.Entity("RolePermission", b =>
                 {
-                    b.HasOne("beaconta.Domain.Entities.Permission", "Permission")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("PermissionId")
+                    b.HasOne("beaconta.Domain.Entities.MenuItem", "MenuItem")
+                        .WithMany()
+                        .HasForeignKey("MenuItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("beaconta.Domain.Entities.Role", "Role")
-                        .WithMany("RolePermissions")
+                        .WithMany("Permissions")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Permission");
+                    b.Navigation("MenuItem");
 
                     b.Navigation("Role");
                 });
@@ -487,15 +452,7 @@ namespace beaconta.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("beaconta.Domain.Entities.Permission", "Permission")
-                        .WithMany()
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("MenuItem");
-
-                    b.Navigation("Permission");
                 });
 
             modelBuilder.Entity("beaconta.Domain.Entities.MenuGroup", b =>
@@ -513,14 +470,9 @@ namespace beaconta.Infrastructure.Migrations
                     b.Navigation("Groups");
                 });
 
-            modelBuilder.Entity("beaconta.Domain.Entities.Permission", b =>
-                {
-                    b.Navigation("RolePermissions");
-                });
-
             modelBuilder.Entity("beaconta.Domain.Entities.Role", b =>
                 {
-                    b.Navigation("RolePermissions");
+                    b.Navigation("Permissions");
 
                     b.Navigation("UserRoles");
                 });

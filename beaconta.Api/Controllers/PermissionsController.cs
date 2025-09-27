@@ -15,16 +15,20 @@ namespace beaconta.Api.Controllers
         {
             _service = service;
         }
+
         [HttpGet("grouped")]
         public async Task<IActionResult> GetGrouped()
         {
             var result = await _service.GetAllAsync();
+
             var grouped = result
-                .GroupBy(p => p.Category)
+                .GroupBy(p => p.Category ?? "General")
                 .Select(g => new {
                     Category = g.Key,
                     Permissions = g.ToList()
-                });
+                })
+                .ToList();
+
             return Ok(grouped);
         }
 

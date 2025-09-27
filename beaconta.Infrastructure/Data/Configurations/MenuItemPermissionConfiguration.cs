@@ -13,17 +13,20 @@ namespace beaconta.Infrastructure.Data.Configurations
             // ✅ استخدم Id من BaseEntity كمفتاح أساسي
             b.HasKey(x => x.Id);
 
-            b.Property(x => x.PermissionKey)
-                .IsRequired()
-                .HasMaxLength(200);
-
-            // ✅ منع التكرار على نفس العنصر ونفس المفتاح
-            b.HasIndex(x => new { x.MenuItemId, x.PermissionKey }).IsUnique();
-
+            // ✅ العلاقة مع MenuItem
             b.HasOne(x => x.MenuItem)
                 .WithMany(i => i.MenuItemPermissions)
                 .HasForeignKey(x => x.MenuItemId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // ✅ العلاقة الجديدة مع Permission
+            b.HasOne(x => x.Permission)
+                .WithMany()
+                .HasForeignKey(x => x.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ✅ منع التكرار على نفس العنصر ونفس الصلاحية
+            b.HasIndex(x => new { x.MenuItemId, x.PermissionId }).IsUnique();
         }
     }
 }

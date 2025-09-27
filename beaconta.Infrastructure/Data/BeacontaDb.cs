@@ -23,6 +23,8 @@ namespace beaconta.Infrastructure.Data
         public DbSet<MenuGroup> MenuGroups => Set<MenuGroup>();
         public DbSet<MenuItem> MenuItems => Set<MenuItem>();
         public DbSet<MenuItemPermission> MenuItemPermissions => Set<MenuItemPermission>();
+        public DbSet<Permission> Permissions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -48,22 +50,25 @@ namespace beaconta.Infrastructure.Data
 
             // 🔹 RolePermission (Many-to-Many between Role & Permission)
             modelBuilder.Entity<RolePermission>()
-        .HasKey(rp => new { rp.RoleId, rp.MenuItemId });
+       .HasKey(rp => new { rp.RoleId, rp.PermissionId });
 
             modelBuilder.Entity<RolePermission>()
                 .HasOne(rp => rp.Role)
-                .WithMany(r => r.Permissions)
+                .WithMany(r => r.RolePermissions)
                 .HasForeignKey(rp => rp.RoleId);
 
             modelBuilder.Entity<RolePermission>()
-                .HasOne(rp => rp.MenuItem)
-                .WithMany()
-                .HasForeignKey(rp => rp.MenuItemId);
+                .HasOne(rp => rp.Permission)
+                .WithMany(p => p.RolePermissions)
+                .HasForeignKey(rp => rp.PermissionId);
 
 
             // ✅ Seed Admin Role
             modelBuilder.Entity<Role>().HasData(
-                new Role { Id = 1, Name = "Admin", Key = "admin" }
+                new Role { Id = 1, Name = "Admin", Key = "admin",
+                    CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+,
+                    CreatedBy = "system" }
             );
 
             // ✅ Seed Default Admin User
@@ -74,22 +79,23 @@ namespace beaconta.Infrastructure.Data
                     FullName = "System Admin",
                     Username = "admin",
                     PasswordHash = "$2a$11$PZFFdWWmQ8ysU7gDys7y4Oe47FTaGcIztUbDR1V27R.gU70KCVT1S", // bcrypt لـ "123456"
-                    Status = "Active"
+                    Status = "Active",
+                    CreatedAt = new DateTime(2025, 1, 1), // ❌ لا تستخدم UtcNow
+                    CreatedBy = "system"
                 }
             );
 
             // ✅ Seed UserRole (ربط الأدمن بالـ Admin Role)
             modelBuilder.Entity<UserRole>().HasData(
-       new UserRole
-       {
-           Id = 1,
-           UserId = 1,
-           RoleId = 1,
-           CreatedAt = new DateTime(2025, 1, 1), // 👈 قيمة ثابتة
-           CreatedBy = "system"
-       }
-   );
-
+                new UserRole
+                {
+                    Id = 1,
+                    UserId = 1,
+                    RoleId = 1,
+                    CreatedAt = new DateTime(2025, 1, 1),
+                    CreatedBy = "system"
+                }
+            );
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -101,12 +107,12 @@ namespace beaconta.Infrastructure.Data
             {
                 if (entry.State == EntityState.Added)
                 {
-                    entry.Entity.CreatedAt = DateTime.UtcNow;
+                    entry.Entity.CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
                     entry.Entity.CreatedBy = username;
                 }
                 else if (entry.State == EntityState.Modified)
                 {
-                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                    entry.Entity.UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
                     entry.Entity.UpdatedBy = username;
                 }
             }

@@ -1,7 +1,13 @@
-﻿namespace beaconta.Domain.Entities
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+
+namespace beaconta.Domain.Entities
 {
     public abstract class BaseEntity
     {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+         
         public int Id { get; set; }
 
         // لا تعطيها قيمة افتراضية هنا نهائيًا!

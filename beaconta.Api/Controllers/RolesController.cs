@@ -11,23 +11,24 @@ namespace beaconta.Api.Controllers
     public class RolesController : ControllerBase
     {
         private readonly IRoleService _service;
-        public RolesController(IRoleService service) { _service = service; }
+        public RolesController(IRoleService service) => _service = service;
 
         [HttpGet]
-        public async Task<IActionResult> GetAll() => Ok(await _service.GetAllAsync());
+        public async Task<IActionResult> GetAll()
+            => Ok(await _service.GetAllAsync());
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
             var role = await _service.GetByIdAsync(id);
-            return role == null ? NotFound() : Ok(role);
+            return role == null ? NotFound(new { message = "الدور غير موجود." }) : Ok(role);
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto?.Name))
-                return BadRequest("اسم المجموعة مطلوب.");
+                return BadRequest(new { message = "اسم المجموعة مطلوب." });
 
             var role = await _service.CreateAsync(dto.Name);
             return Ok(role);
@@ -37,10 +38,12 @@ namespace beaconta.Api.Controllers
         public async Task<IActionResult> UpdateName(int id, [FromBody] UpdateRoleDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto?.Name))
-                return BadRequest("اسم المجموعة مطلوب.");
+                return BadRequest(new { message = "اسم المجموعة مطلوب." });
 
             var updatedRole = await _service.UpdateNameAsync(id, dto.Name);
-            return updatedRole == null ? NotFound() : Ok(updatedRole);
+            return updatedRole == null
+                ? NotFound(new { message = "الدور غير موجود." })
+                : Ok(updatedRole);
         }
 
         [HttpDelete("{id:int}")]
@@ -53,16 +56,17 @@ namespace beaconta.Api.Controllers
             return Ok(new { message = "تم الحذف بنجاح." });
         }
 
-        // 🔹 تحديث الصلاحيات باستخدام Keys
         [HttpPut("{id:int}/permissions")]
         public async Task<IActionResult> UpdatePermissions(int id, [FromBody] UpdateRolePermissionsDto dto)
         {
             if (dto == null || dto.PermissionIds == null || !dto.PermissionIds.Any())
-                return BadRequest("قائمة الصلاحيات مطلوبة.");
+                return BadRequest(new { message = "قائمة الصلاحيات مطلوبة." });
 
             dto.RoleId = id;
             var updatedRole = await _service.UpdatePermissionsAsync(dto);
-            return updatedRole == null ? NotFound() : Ok(updatedRole);
+            return updatedRole == null
+                ? NotFound(new { message = "الدور غير موجود." })
+                : Ok(updatedRole);
         }
 
         [HttpGet("{id:int}/users")]
@@ -73,12 +77,15 @@ namespace beaconta.Api.Controllers
         public async Task<IActionResult> ClonePermissions(int id, [FromBody] CloneRoleDto dto)
         {
             if (dto == null || dto.FromRoleId <= 0)
-                return BadRequest("fromRoleId مطلوب.");
+                return BadRequest(new { message = "fromRoleId مطلوب." });
+
             if (dto.FromRoleId == id)
-                return BadRequest("لا يمكن النسخ من نفس المجموعة.");
+                return BadRequest(new { message = "لا يمكن النسخ من نفس المجموعة." });
 
             var updated = await _service.ClonePermissionsAsync(dto.FromRoleId, id);
-            return !updated ? BadRequest("فشل نسخ الصلاحيات.") : Ok(new { message = "تم نسخ الصلاحيات بنجاح." });
+            return !updated
+                ? BadRequest(new { message = "فشل نسخ الصلاحيات." })
+                : Ok(new { message = "تم نسخ الصلاحيات بنجاح." });
         }
     }
 

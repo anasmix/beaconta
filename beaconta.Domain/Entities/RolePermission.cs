@@ -4,11 +4,11 @@ using System.Text.Json.Serialization;
 public class RolePermission : BaseEntity
 {
     public int RoleId { get; set; }
-    public int MenuItemId { get; set; }   // 👈 FK
+    public int PermissionId { get; set; }   // ✅ الربط مع Permission
 
     [JsonIgnore]
     public Role Role { get; set; } = null!;
 
     [JsonIgnore]
-    public MenuItem MenuItem { get; set; } = null!; 
+    public Permission Permission { get; set; } = null!;
 }
