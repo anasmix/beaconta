@@ -21,22 +21,41 @@ namespace beaconta.Infrastructure.Services
                 .ToListAsync(ct);
         }
 
+        //        public async Task<HashSet<string>> GetPermissionKeysForUserAsync(int userId, CancellationToken ct)
+        //        {
+        //            // Roles -> RolePermissions -> MenuItemId -> MenuItemPermissions -> PermissionKey
+        //            var keys = await _db.UserRoles
+        //        .Where(ur => ur.UserId == userId)
+        //.SelectMany(ur => ur.Role.Permissions) // RolePermissions
+        //.Join(_db.MenuItems,
+        //      rp => rp.MenuItemId,   // 👈 صار يربط على MenuItemId
+        //      mi => mi.Id,
+        //      (rp, mi) => mi)
+        //.SelectMany(mi => mi.MenuItemPermissions)
+        //.Select(mip => mip.PermissionKey)   // 👈 نرجع المفاتيح (string)
+        //.Distinct()
+        //.ToListAsync(ct);
+
+        //            return keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        //        }
+
         public async Task<HashSet<string>> GetPermissionKeysForUserAsync(int userId, CancellationToken ct)
         {
-            // Roles -> RolePermissions -> MenuItemId -> MenuItemPermissions -> PermissionKey
             var keys = await _db.UserRoles
-        .Where(ur => ur.UserId == userId)
-.SelectMany(ur => ur.Role.Permissions) // RolePermissions
-.Join(_db.MenuItems,
-      rp => rp.MenuItemId,   // 👈 صار يربط على MenuItemId
-      mi => mi.Id,
-      (rp, mi) => mi)
-.SelectMany(mi => mi.MenuItemPermissions)
-.Select(mip => mip.PermissionKey)   // 👈 نرجع المفاتيح (string)
-.Distinct()
-.ToListAsync(ct);
+                .Where(ur => ur.UserId == userId)
+                .SelectMany(ur => ur.Role.Permissions) // 👈 تأكد من اسم الـ nav property
+                .Join(_db.MenuItems,
+                      rp => rp.MenuItemId,
+                      mi => mi.Id,
+                      (rp, mi) => mi)
+                .SelectMany(mi => mi.MenuItemPermissions)
+                .Select(mip => mip.PermissionKey)
+                .Distinct()
+                .ToListAsync(ct);
 
             return keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
+
+
     }
 }

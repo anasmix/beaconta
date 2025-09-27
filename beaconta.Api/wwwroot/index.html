@@ -5,68 +5,26 @@
     <title>نظام المدارس — الرئيسية</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-    <!-- ====== CSS المطلوب منّك ====== -->
-    <link rel="stylesheet"
-          href="https://unpkg.com/bootstrap-material-design@4.1.1/dist/css/bootstrap-material-design.min.css">
-
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/bootstrap-material-design@4.1.1/dist/css/bootstrap-material-design.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css">
-
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
     <link rel="icon" href="https://img.icons8.com/color/48/school.png" type="image/png">
-
-    <!-- ملفاتك المحلية -->
     <link rel="stylesheet" href="css/main.css">
-    <link href="css/easy-numpad.css" rel="stylesheet" />
-    <link href="css/resizeable.css" rel="stylesheet" />
-    <link href="css/index.css" rel="stylesheet" />
-
-    <!-- أيقونات اختيارية -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-    
-
+    <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
-    <!-- شريط إنهاء ملء الشاشة -->
-    <div id="fullscreenBar">
-        <div class="bar-content">
-            <div class="bar-title">
-                <i class="bi bi-arrows-fullscreen"></i>
-                <span>وضع ملء الشاشة مفعل</span>
-            </div>
-            <button id="exitFullscreenBtn" class="exit-btn">
-                <i class="bi bi-x-circle"></i> إنهاء
-            </button>
-        </div>
-    </div>
-
-
-
-    <!-- زر التكبير/التصغير
-    <button id="iframeFullscreenToggle" title="تكبير/تصغير الشاشة"
-      style="position: fixed; top: 12px; left: 12px; z-index: 5000;
-             background: rgba(0,0,0,0.6); color:#fff; border:none;
-             border-radius:50%; width:40px; height:40px;
-             display:flex; align-items:center; justify-content:center;">
-      <i class="bi bi-arrows-fullscreen"></i>
-    </button>
-    -->
-
     <div class="app">
-
-        <!-- Top Bar -->
+        <!-- App Bar -->
         <header class="appbar shadow-lg">
             <div class="container-fluid">
-
-                <!-- الصف العلوي: قائمة/شعار + بحث + إجراءات -->
                 <div class="d-flex align-items-center justify-content-between py-2">
                     <div class="d-flex align-items-center">
-                        <!-- زر القائمة للموبايل -->
                         <button id="btnMenu" class="btn btn-white btn-sm d-inline-flex d-lg-none mr-2" title="القائمة">
                             <i class="bi bi-list"></i>
                         </button>
-
-                        <!-- الشعار -->
                         <div class="brand d-flex align-items-center">
                             <span class="brand-mark d-inline-flex align-items-center justify-content-center mr-2">
                                 <i class="bi bi-mortarboard"></i>
@@ -78,30 +36,19 @@
                         </div>
                     </div>
 
-
-                    <!-- بحث سريع (يختصر على الموبايل) -->
                     <form class="appbar-search d-none d-md-flex align-items-center flex-grow-1 mx-3" role="search" onsubmit="return false;">
                         <div class="form-group bmd-form-group mb-0 w-100">
                             <div class="input-group input-group-sm search-field">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                </div>
-                                <input type="text" class="form-control" placeholder="ابحث في الطلاب، العقود، المدفوعات…" aria-label="بحث عام">
-                                <div class="input-group-append d-none d-lg-flex">
-                                    <span class="kbd">Ctrl</span><span class="kbd">K</span>
-                                </div>
+                                <div class="input-group-prepend"><span class="input-group-text"><i class="bi bi-search"></i></span></div>
+                                <input id="globalSearch" type="text" class="form-control" placeholder="ابحث في الطلاب، العقود، المدفوعات…" aria-label="بحث عام">
+                                <div class="input-group-append d-none d-lg-flex"><span class="kbd">Ctrl</span><span class="kbd">K</span></div>
                             </div>
                         </div>
                     </form>
 
-                    <!-- إجراءات -->
                     <div class="d-flex align-items-center">
-
-
-                        <!-- 🔹 الإجراءات + اختيار السنة -->
                         <div class="d-flex align-items-center">
-
-                            <!-- زر اختيار السنة (نفس ستايل الأزرار) -->
+                            <!-- سنة دراسية -->
                             <div class="dropdown mr-2">
                                 <button class="btn btn-white btn-sm d-flex align-items-center" id="yearDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <i class="bi bi-calendar3 mr-1"></i>
@@ -115,36 +62,12 @@
                                 </div>
                             </div>
 
-                            <!-- زر تبديل الثيم -->
-                            <button id="themeBtn" class="btn btn-white btn-sm mr-1" title="تبديل الوضع">
-                                <i class="bi bi-moon-stars"></i>
-                            </button>
-
-                            <!-- زر الإشعارات -->
-                            <button class="btn btn-white btn-sm mr-1" title="الإشعارات" data-toggle="tooltip">
-                                <span class="position-relative d-inline-flex align-items-center justify-content-center">
-                                    <i class="bi bi-bell"></i>
-                                    <span class="badge badge-pill badge-danger notify-badge">3</span>
-                                </span>
-                            </button>
-
-                            <!-- زر تحديث التبويب -->
-                            <button id="reloadActive" class="btn btn-white btn-sm mr-2" title="تحديث التبويب">
-                                <i class="bi bi-arrow-clockwise"></i>
-                            </button>
-
-                            <!-- زر التكبير/التصغير -->
-                            <button id="iframeFullscreenToggle" class="btn btn-white btn-sm mr-2" title="تكبير/تصغير الشاشة">
-                                <i class="bi bi-arrows-fullscreen"></i>
-                            </button>
+                            <button id="themeBtn" class="btn btn-white btn-sm mr-1" title="تبديل الوضع"><i class="bi bi-moon-stars"></i></button>
+                            <button id="btnNotifications" class="btn btn-white btn-sm mr-1" title="الإشعارات"><i class="bi bi-bell"></i><span class="badge badge-pill badge-danger notify-badge">3</span></button>
+                            <button id="reloadActive" class="btn btn-white btn-sm mr-2" title="تحديث التبويب"><i class="bi bi-arrow-clockwise"></i></button>
+                            <button id="iframeFullscreenToggle" class="btn btn-white btn-sm mr-2" title="تكبير/تصغير الشاشة"><i class="bi bi-arrows-fullscreen"></i></button>
                         </div>
 
-
-
-
-
-
-                        <!-- قائمة المستخدم -->
                         <div class="dropdown">
                             <button class="btn btn-white btn-sm d-inline-flex align-items-center" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <img src="https://i.pravatar.cc/40?img=12" class="avatar rounded-circle ml-2" alt="المستخدم" width="28" height="28">
@@ -161,19 +84,15 @@
                     </div>
                 </div>
 
-                <!-- الصف السفلي: تنقّل أيقوني قابل للتمرير -->
-                <!-- Nav Scroller -->
+                <!-- Main Tabs -->
                 <nav class="nav-scroller">
                     <ul id="mainTabs" class="nav nav-pills nav-pills-icons"></ul>
                 </nav>
-
             </div>
         </header>
 
         <!-- Layout -->
         <div class="layout container-fluid">
-            <!-- Sidebar (Desktop) -->
-            <!-- Sidebar -->
             <aside class="sidebar desktop-sidebar">
                 <div class="search">
                     <i class="bi bi-search"></i>
@@ -182,21 +101,15 @@
                 <div id="sidebar"></div>
             </aside>
 
-
-            <!-- Workspace -->
             <section class="workspace">
                 <div class="ws-tabs" id="tabsBar" aria-label="تبويبات العمل"></div>
                 <div class="ws-content">
                     <div class="empty">افتح صفحة من القائمة — ستظهر هنا بدون تحديث كامل، وتبقى حالتها محفوظة عند التنقّل.</div>
                     <div id="frames" class="h-100 position-relative" role="region" aria-label="محتوى التبويب"></div>
-                    <!-- زر تكبير/تصغير الإطار النشط -->
-
                 </div>
             </section>
         </div>
-
     </div>
-
 
     <!-- Drawer (Mobile) -->
     <div id="drawer" class="drawer" aria-hidden="true">
@@ -215,7 +128,15 @@
         </div>
     </div>
 
-    <!-- أدوات أساسية -->
+    <!-- Fullscreen exit bar -->
+    <div id="fullscreenBar" style="display:none">
+        <div class="bar-content">
+            <div class="bar-title"><i class="bi bi-arrows-fullscreen"></i> <span>وضع ملء الشاشة مفعل</span></div>
+            <button id="exitFullscreenBtn" class="exit-btn"><i class="bi bi-x-circle"></i> إنهاء</button>
+        </div>
+    </div>
+
+    <!-- Libs -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js"></script>
@@ -223,438 +144,27 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- ملفاتك المحلية -->
+    <!-- Shared utils (already in your project) -->
     <script src="js/utils.js"></script>
-    <script src="js/api.js"></script> <!-- ⚠️ لازم ييجي هنا قبل أي ملف يستخدم Api -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/loader.js"></script>
     <script src="js/forms.js"></script>
-    <script src="js/menu-dynamic.js"></script> <!-- ييجي بعد api.js -->
-    <script src="js/home.js"></script>
+    <script src="js/datatable.js"></script>
+    <!-- Optional fallback menu -->
+    <script src="js/menu.js"></script>
+    <script>window.MENU_FALLBACK = window.MENU_FALLBACK || window.MENU || {};</script>
 
-
-    <script>
-        /* ===== تفعيل Bootstrap Material Design ===== */
-        $(function () { $('body').bootstrapMaterialDesign(); });
-
-        /* ===== بيانات القائمة ===== */
-        const MENU = {
-            };
-
-        /* ===== الحالة ===== */
-        const KEY = 'school_shell_material_v1';
-        let state = { theme: document.documentElement.dataset.theme || 'light', main: 'dashboard', tabs: [] };
-        // tabs: [{id,title,url,active,dirty}]
-
-        function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
-        function load() {
-            const raw = localStorage.getItem(KEY); if (!raw) return;
-            try {
-                const s = JSON.parse(raw);
-                state = Object.assign(state, s);
-                document.documentElement.dataset.theme = state.theme;
-                syncThemeIcon();
-            } catch { }
-        }
-
-        /* ===== بناء Sidebar (desktop/mobile) ===== */
-        //function buildSidebar(container) {
-        //    container.innerHTML = '';
-        //    const sec = MENU[state.main];
-        //    sec.groups.forEach((g, gi) => {
-        //        const box = document.createElement('div'); box.className = 'group';
-        //        box.innerHTML = `
-        //                            <div class="group-header" data-toggle="${gi}">
-        //                              <div class="group-title">${g.title}</div>
-        //                              <i class="bi bi-chevron-down"></i>
-        //                            </div>
-        //                            <div class="group-items"></div>
-        //                          `;
-        //        const wrap = box.querySelector('.group-items');
-        //        g.items.forEach(it => {
-        //            const row = document.createElement('div');
-        //            row.className = 'side-item';
-        //            row.dataset.open = it.id; row.dataset.url = it.url; row.dataset.title = it.title;
-        //            row.innerHTML = `<i class="bi ${it.icon}"></i><div><div class="font-weight-bold">${it.title}</div><small class="text-muted">${it.desc || ''}</small></div>`;
-        //            row.addEventListener('click', () => {
-        //                openTab({ id: it.id, title: it.title, url: it.url });
-        //                toastInfo('تم فتح: ' + it.title);
-        //                drawerClose(); // إن كان من الموبايل
-        //            });
-        //            wrap.appendChild(row);
-        //        });
-        //        container.appendChild(box);
-        //    });
-
-        //    container.querySelectorAll('.group-header').forEach(h => {
-        //        h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
-        //    });
-        //}
-
-        /* ===== Workspace Tabs ===== */
-        const tabsBar = document.getElementById('tabsBar');
-        const frames = document.getElementById('frames');
-
-        function renderTabs() {
-            tabsBar.innerHTML = '';
-            if (state.tabs.length === 0) document.querySelector('.empty').style.display = 'flex';
-            else document.querySelector('.empty').style.display = 'none';
-
-            state.tabs.forEach(t => {
-                const chip = document.createElement('div');
-                chip.className = `chip ${t.active ? 'active' : ''} ${t.dirty ? 'dirty' : ''} animate__animated animate__fadeIn`;
-                chip.dataset.tab = t.id;
-                chip.innerHTML = `
-                                    <span class="dot"></span>
-                                    <i class="bi bi-window-stack"></i>
-                                    <span>${t.title}</span>
-                                    <button class="close" title="إغلاق"><i class="bi bi-x-lg"></i></button>
-                                  `;
-                chip.addEventListener('click', (e) => {
-                    if (e.target.closest('.close')) { tryClose(t.id); return; }
-                    activateTab(t.id);
-                });
-                tabsBar.appendChild(chip);
-            });
-
-            // إظهار/إخفاء الإطارات
-            [...frames.querySelectorAll('iframe')].forEach(f => {
-                const id = f.dataset.tab;
-                f.style.display = state.tabs.find(x => x.id === id)?.active ? 'block' : 'none';
-            });
-        }
-
-        function ensureFrame(tab) {
-            let f = frames.querySelector(`iframe[data-tab="${tab.id}"]`);
-            if (!f) {
-                // Show a loader while the iframe is loading
-                const ld = document.createElement('div');
-                ld.className = 'loader';
-                ld.dataset.loader = tab.id;
-                ld.innerHTML = '<div class="spinner"></div>';
-                frames.appendChild(ld);
-
-                f = document.createElement('iframe');
-                f.className = 'frame';
-                f.dataset.tab = tab.id;
-                /*
-                 * Determine which URL to load. If the menu entry did not specify a URL
-                 * (or it is set to "#"), fall back to a convention where the page for
-                 * this tab lives under the `pages/` directory and is named after the
-                 * tab's id. This allows the organizational structure to be defined in
-                 * one place while keeping each page separate. A query parameter with
-                 * the tab ID is always appended for context.
-                 */
-                const fallbackUrl = !tab.url || tab.url === '#' ? `pages/${tab.id}.html` : tab.url;
-                const url = fallbackUrl.includes('?')
-                    ? `${fallbackUrl}&tabId=${encodeURIComponent(tab.id)}`
-                    : `${fallbackUrl}?tabId=${encodeURIComponent(tab.id)}`;
-                f.src = url;
-                // Allow forms and scripts inside the iframe but isolate origin
-                f.setAttribute('sandbox', 'allow-forms allow-same-origin allow-scripts');
-                f.addEventListener('load', () => frames.querySelector(`[data-loader="${tab.id}"]`)?.remove());
-                frames.appendChild(f);
-            }
-        }
-
-        function openTab({ id, title, url }) {
-            const ex = state.tabs.find(t => t.id === id);
-            state.tabs.forEach(t => t.active = false);
-            if (ex) { ex.active = true; ensureFrame(ex); }
-            else {
-                const t = { id, title, url, active: true, dirty: false };
-                state.tabs.push(t); ensureFrame(t);
-            }
-            save(); renderTabs();
-        }
-
-        function activateTab(id) { state.tabs.forEach(t => t.active = (t.id === id)); save(); renderTabs(); }
-
-        function setDirty(id, dirty = true) { const t = state.tabs.find(x => x.id === id); if (!t) return; t.dirty = !!dirty; save(); renderTabs(); }
-        function tryClose(id) {
-            const t = state.tabs.find(x => x.id === id); if (!t) return;
-            if (t.dirty && !confirm('هناك تغييرات غير محفوظة — إغلاق التبويب؟')) return;
-            closeTab(id);
-        }
-        function closeTab(id) {
-            const idx = state.tabs.findIndex(t => t.id === id); if (idx < 0) return;
-            const wasActive = state.tabs[idx].active;
-            frames.querySelector(`[data-loader="${id}"]`)?.remove();
-            frames.querySelector(`iframe[data-tab="${id}"]`)?.remove();
-            state.tabs.splice(idx, 1);
-            if (wasActive && state.tabs.length) state.tabs[state.tabs.length - 1].active = true;
-            save(); renderTabs();
-        }
-
-        /* ===== أدوات صغيرة ===== */
-        function toastInfo(msg) { toastr.info(msg, 'معلومة', { timeOut: 1400, positionClass: 'toast-bottom-left' }); }
-        function syncThemeIcon() {
-            const dark = document.documentElement.dataset.theme === 'dark';
-            document.getElementById('themeBtn').innerHTML = `<i class="bi ${dark ? 'bi-sun' : 'bi-moon-stars'}"></i>`;
-        }
-
-        /* ===== Drawer (Mobile) ===== */
-        const drawer = document.getElementById('drawer');
-        const btnMenu = document.getElementById('btnMenu');
-        const btnCloseDrawer = document.getElementById('btnCloseDrawer');
-        function drawerOpen() { drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); }
-        function drawerClose() { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); }
-        btnMenu.addEventListener('click', drawerOpen);
-        btnCloseDrawer.addEventListener('click', drawerClose);
-        drawer.addEventListener('click', (e) => { if (e.target === drawer) drawerClose(); });
-
-        /* ===== Main Tabs (desktop/mobile) ===== */
-        function bindMainTabs(containerId) {
-            const root = document.getElementById(containerId);
-            root.addEventListener('click', (e) => {
-                const a = e.target.closest('.nav-link'); if (!a) return;
-                e.preventDefault();
-                root.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
-                a.classList.add('active');
-                state.main = a.dataset.main; save();
-                buildSidebar(document.getElementById('sidebar'), state.main);
-                buildSidebar(document.getElementById('sidebarMobile'), state.main);
-
-            });
-        }
-        bindMainTabs('mainTabs');
-        bindMainTabs('mainTabsMobile');
-
-        /* ===== بحث جانبي ===== */
-        function bindSearch(boxId, listRootId) {
-            const el = document.getElementById(boxId);
-            el?.addEventListener('input', function () {
-                const q = this.value.trim().toLowerCase();
-                document.querySelectorAll('#' + listRootId + ' .side-item').forEach(n => {
-                    const t = (n.dataset.title || '').toLowerCase();
-                    n.style.display = t.includes(q) ? '' : 'none';
-                });
-            });
-        }
-        bindSearch('sideSearch', 'sidebar');
-        bindSearch('sideSearchMobile', 'sidebarMobile');
-
-        /* ===== أزرار أعلى الشريط ===== */
-        document.getElementById('themeBtn').addEventListener('click', () => {
-            const isDark = document.documentElement.dataset.theme === 'dark';
-            document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
-            state.theme = document.documentElement.dataset.theme; save(); syncThemeIcon();
-        });
-
-        document.getElementById('reloadActive').addEventListener('click', () => {
-            const a = state.tabs.find(t => t.active); if (!a) return;
-            const frame = frames.querySelector(`iframe[data-tab="${a.id}"]`); if (!frame) return;
-            const ld = document.createElement('div'); ld.className = 'loader'; ld.dataset.loader = a.id; ld.innerHTML = '<div class="spinner"></div>';
-            frames.appendChild(ld);
-            frame.contentWindow.location.reload();
-            frame.addEventListener('load', () => frames.querySelector(`[data-loader="${a.id}"]`)?.remove(), { once: true });
-        });
-
-        /* ===== رسائل من الصفحات الفرعية (openTab / dirty) ===== */
-        window.addEventListener('message', (e) => {
-            const d = e.data || {};
-            if (d.type === 'openTab' && d.id && d.title && d.url) {
-                openTab({ id: d.id, title: d.title, url: d.url });
-                toastInfo('فتح: ' + d.title);
-            }
-            if (d.type === 'dirty' && d.tabId) { setDirty(d.tabId, !!d.value); }
-        });
-
-        /* ===== إقلاع ===== */
-        //(function boot() {
-        //    load();
-        //    buildSidebar(document.getElementById('sidebar'));
-        //    buildSidebar(document.getElementById('sidebarMobile'));
-        //    state.tabs.forEach(t => ensureFrame(t));
-        //    if (state.tabs.length === 0) {
-        //        // On first load, open the home tab. Use the dashboard overview ID so that
-        //        // the URL convention described in ensureFrame() applies correctly.
-        //        openTab({ id: 'dashboard-overview', title: 'الرئيسية', url: 'pages/dashboard.html' });
-        //    } else {
-        //        renderTabs();
-        //    }
-        //    syncThemeIcon();
-        //})();
-
-        function boot(fromApi = false) {
-            load();
-
-            if (!fromApi) {
-                if (!window.MENU || Object.keys(window.MENU).length === 0) {
-                    console.warn("⚠️ API menu not available, using fallback");
-                    window.MENU = window.MENU_FALLBACK || {};
-                }
-            }
-
-            // 🟢 استخدم buildSidebar الجديدة مع state.main
-            buildSidebar(document.getElementById('sidebar'), state.main);
-            buildSidebar(document.getElementById('sidebarMobile'), state.main);
-
-            state.tabs.forEach(t => ensureFrame(t));
-            if (state.tabs.length === 0) {
-                openTab({ id: 'dashboard-overview', title: 'الرئيسية', url: 'pages/dashboard.html' });
-            } else {
-                renderTabs();
-            }
-            syncThemeIcon();
-        }
-
-
-        // شغّله مبدئياً
-        boot();
-
-        /* ==== اختيار السنة الدراسية ==== */
-        const yearSelectEl = document.getElementById('ddlSchoolYear');
-        if (yearSelectEl) {
-            const savedYear = localStorage.getItem('schoolYear');
-            if (savedYear) {
-                yearSelectEl.value = savedYear;
-            }
-            yearSelectEl.addEventListener('change', function () {
-                localStorage.setItem('schoolYear', this.value);
-                window.dispatchEvent(new CustomEvent('schoolYearChanged', { detail: this.value }));
-            });
-        }
-
-
-    </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-    <script>
-        (function () {
-            const framesRoot = document.getElementById('frames');
-            const toggleBtn = document.getElementById('iframeFullscreenToggle');
-
-            document.getElementById('exitFullscreenBtn')
-                ?.addEventListener('click', exitFullscreen);
-
-            // أنشئ شريط الخروج لو مش موجود
-            function ensureFullscreenBar() {
-                let bar = document.getElementById('fullscreenBar');
-                if (!bar) {
-                    bar = document.createElement('div');
-                    bar.id = 'fullscreenBar';
-                    bar.innerHTML = `
-                                    <div class="bar-content">
-                                      <i class="bi bi-arrows-angle-contract"></i>
-                                      <span>وضع ملء الشاشة</span>
-                                      <button id="exitFullscreenBtn" class="close-cta">
-                                        <i class="bi bi-x-lg"></i> إنهاء ملء الشاشة
-                                      </button>
-                                    </div>`;
-                    document.body.appendChild(bar);
-                }
-                // كِلِك على الشريط أو الزر = خروج
-                bar.addEventListener('click', exitFullscreen);
-                bar.querySelector('#exitFullscreenBtn')?.addEventListener('click', function (e) {
-                    e.stopPropagation(); exitFullscreen();
-                });
-                // زر ESC للخروج
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') exitFullscreen();
-                });
-                return bar;
-            }
-
-            // يجيب iframe النشط بشكل مرن (بدون الاعتماد على state)
-            function getActiveIframe() {
-                // 1) إذا عندك state.tabs شغّالة
-                try {
-                    const activeTab = window.state?.tabs?.find(t => t.active);
-                    if (activeTab) {
-                        const f = framesRoot?.querySelector(`iframe[data-tab="${activeTab.id}"]`);
-                        if (f) return f;
-                    }
-                } catch { }
-                // 2) أوّل iframe ظاهر
-                const iframes = Array.from(document.querySelectorAll('#frames iframe'));
-                const visible = iframes.find(f => getComputedStyle(f).display !== 'none');
-                if (visible) return visible;
-                // 3) آخر iframe مضاف
-                return iframes[iframes.length - 1] || null;
-            }
-
-            function enterFullscreen() {
-                const iframe = getActiveIframe();
-                if (!iframe) return;
-
-                iframe.classList.add('iframe-fullscreen');
-                document.querySelector('.appbar')?.classList.add('fullscreen-hidden');
-                document.querySelector('.sidebar')?.classList.add('fullscreen-hidden');
-                document.querySelector('.ws-tabs')?.classList.add('fullscreen-hidden');
-                document.getElementById('drawer')?.classList.add('fullscreen-hidden');
-
-                ensureFullscreenBar().style.display = 'block';
-
-                // بدّل أيقونة الزر (لو موجودة)
-                const icon = toggleBtn?.querySelector('i');
-                if (icon) { icon.classList.remove('bi-arrows-fullscreen'); icon.classList.add('bi-arrows-angle-contract'); }
-            }
-
-            function exitFullscreen() {
-                const iframe = document.querySelector('#frames .iframe-fullscreen');
-                if (!iframe) return;
-
-                iframe.classList.remove('iframe-fullscreen');
-                document.querySelector('.appbar')?.classList.remove('fullscreen-hidden');
-                document.querySelector('.sidebar')?.classList.remove('fullscreen-hidden');
-                document.querySelector('.ws-tabs')?.classList.remove('fullscreen-hidden');
-                document.getElementById('drawer')?.classList.remove('fullscreen-hidden');
-
-                const bar = document.getElementById('fullscreenBar');
-                if (bar) bar.style.display = 'none';
-
-                const icon = toggleBtn?.querySelector('i');
-                if (icon) { icon.classList.add('bi-arrows-fullscreen'); icon.classList.remove('bi-arrows-angle-contract'); }
-            }
-
-            function toggleFullscreen() {
-                const isOn = !!document.querySelector('#frames .iframe-fullscreen');
-                if (isOn) exitFullscreen(); else enterFullscreen();
-            }
-
-            // اربط الزر
-            toggleBtn?.addEventListener('click', function (e) {
-                e.preventDefault(); e.stopPropagation(); toggleFullscreen();
-            });
-
-            // حضّر الشريط مرة واحدة
-            ensureFullscreenBar();
-        })();
-    </script>
-    <script>
-        // تحديث السنة المختارة
-        document.querySelectorAll('#yearDropdown + .dropdown-menu .dropdown-item')
-            .forEach(item => {
-                item.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const yearText = this.textContent;
-                    const yearValue = this.dataset.value;
-                    document.getElementById('currentYear').textContent = yearText;
-                    localStorage.setItem('schoolYear', yearValue);
-                    // أرسل حدث لتحديث باقي النظام
-                    window.dispatchEvent(new CustomEvent('schoolYearChanged', { detail: yearValue }));
-                });
-            });
-
-        // استرجاع السنة المحفوظة
-        const savedYear = localStorage.getItem('schoolYear');
-        if (savedYear) {
-            const selectedItem = document.querySelector(`#yearDropdown + .dropdown-menu .dropdown-item[data-value="${savedYear}"]`);
-            if (selectedItem) {
-                document.getElementById('currentYear').textContent = selectedItem.textContent;
-            }
-        }
-    </script>
-
+    <!-- SoC modules -->
+    <script src="js/core/state.js"></script>
+    <script src="js/core/permissions.js"></script>
+    <script src="js/core/tabs.js"></script>
+    <script src="js/core/drawer.js"></script>
+    <script src="js/core/sidebar.js"></script>
+    <script src="js/core/nav.js"></script>
+    <script src="js/core/fullscreen.js"></script>
+    <script src="js/core/year.js"></script>
+    <script src="js/core/menu-dynamic.js"></script>
+    <script src="js/core/boot.js"></script>
 </body>
 </html>

@@ -12,5 +12,6 @@ namespace beaconta.Domain.Entities
 
         [JsonIgnore]
         public ICollection<RolePermission> Permissions { get; set; } = new List<RolePermission>();
+    
     }
 }
