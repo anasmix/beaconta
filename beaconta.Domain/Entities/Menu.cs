@@ -45,8 +45,8 @@ namespace beaconta.Domain.Entities
         public int MenuItemId { get; set; }
         public MenuItem MenuItem { get; set; } = default!;
 
-        public int PermissionId { get; set; }   // موجود في جدول DB
-        public Permission Permission { get; set; } = default!;
+        // ✅ المفتاح المنطقي للصلاحية (بدون FK)
+        public string PermissionKey { get; set; } = default!;
     }
 
 

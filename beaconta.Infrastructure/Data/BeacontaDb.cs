@@ -80,8 +80,16 @@ namespace beaconta.Infrastructure.Data
 
             // ✅ Seed UserRole (ربط الأدمن بالـ Admin Role)
             modelBuilder.Entity<UserRole>().HasData(
-                new UserRole { Id = 1, UserId = 1, RoleId = 1, CreatedAt = DateTime.UtcNow, CreatedBy = "system" }
-            );
+       new UserRole
+       {
+           Id = 1,
+           UserId = 1,
+           RoleId = 1,
+           CreatedAt = new DateTime(2025, 1, 1), // 👈 قيمة ثابتة
+           CreatedBy = "system"
+       }
+   );
+
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

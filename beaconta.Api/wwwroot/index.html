@@ -23,523 +23,7 @@
 
     <!-- أيقونات اختيارية -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-    <style>
-        /* ===== AppBar (هيدر متدرّج، Material) ===== */
-        .appbar {
-            background: linear-gradient(135deg, #3f51b5 0%, #1e79d6 60%, #1b1c54 100%);
-            color: #fff;
-            position: sticky;
-            top: 0;
-            z-index: 1030;
-        }
-
-            .appbar .btn.btn-white {
-                background: rgba(255,255,255,.15);
-                color: #fff;
-                border: 0;
-                border-radius: 999px;
-                padding: .35rem .6rem;
-            }
-
-                .appbar .btn.btn-white:hover {
-                    background: rgba(255,255,255,.25);
-                }
-
-            .appbar .brand-mark {
-                width: 38px;
-                height: 38px;
-                border-radius: 12px;
-                background: rgba(255,255,255,.15);
-                color: #fff;
-                font-size: 1.1rem;
-            }
-
-            .appbar .brand-text small {
-                letter-spacing: .3px;
-            }
-
-            .appbar .avatar {
-                object-fit: cover;
-                box-shadow: 0 4px 10px rgba(0,0,0,.25);
-            }
-
-        /* بحث */
-        .appbar-search .search-field .input-group-text {
-            background: rgba(255,255,255,.12);
-            color: #fff;
-            border: 0;
-        }
-
-        .appbar-search input.form-control {
-            background: rgba(255,255,255,.12);
-            border: 0;
-            color: #fff;
-        }
-
-        .appbar-search input::placeholder {
-            color: rgba(255,255,255,.85);
-        }
-
-        .appbar-search .kbd {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255,255,255,.12);
-            color: #fff;
-            font-size: .7rem;
-            border-radius: 6px;
-            padding: .1rem .35rem;
-            margin-inline-start: .25rem;
-        }
-
-        /* Badges */
-        .notify-badge {
-            position: absolute;
-            top: -6px;
-            inset-inline-end: -8px;
-            transform: translate(50%,-50%);
-        }
-
-        /* Nav scroller */
-        .nav-scroller {
-            margin-top: .25rem;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .nav-pills.nav-pills-icons {
-            display: flex;
-            gap: .25rem;
-            padding: .25rem 0;
-        }
-
-            .nav-pills.nav-pills-icons .nav-link {
-                display: flex;
-                align-items: center;
-                gap: .45rem;
-                color: #fff;
-                opacity: .85;
-                border-radius: 999px;
-                padding: .4rem .8rem;
-                transition: .18s;
-                white-space: nowrap;
-            }
-
-                .nav-pills.nav-pills-icons .nav-link i {
-                    font-size: 1rem;
-                }
-
-                .nav-pills.nav-pills-icons .nav-link:hover {
-                    opacity: 1;
-                    background: rgba(255,255,255,.12);
-                }
-
-                .nav-pills.nav-pills-icons .nav-link.active {
-                    background: #fff;
-                    color: #243047;
-                    font-weight: 700;
-                    box-shadow: 0 6px 18px rgba(0,0,0,.18);
-                }
-
-        /* تكيّف شاشات صغيرة */
-        @media (max-width: 991.98px) {
-            .appbar-search {
-                display: none !important;
-            }
-
-            .nav-pills.nav-pills-icons .nav-link span {
-                display: none;
-            }
-            /* أيقونات فقط على الموبايل */
-            .nav-pills.nav-pills-icons .nav-link {
-                padding: .45rem .6rem;
-            }
-        }
-    </style>
-
-    <style>
-        :root {
-            --sidebar-w: 300px;
-            --radius: 16px;
-            --chip-bg: #f6f8fb;
-            --text: #0f172a;
-            --muted: #6b7280;
-        }
-
-        [data-theme="dark"] {
-            --chip-bg: rgba(255,255,255,.10);
-            --text: #e6edf7;
-            --muted: #a5b4c3;
-        }
-
-        html, body {
-            height: 100%;
-            background: #f5f7fb;
-            color: var(--text);
-        }
-
-        .app {
-            height: 100dvh;
-            display: grid;
-            grid-template-rows: auto 1fr;
-        }
-
-        /* Top App Bar (Material) */
-        .topbar {
-            background: #3f51b5;
-            color: #fff;
-            position: sticky;
-            top: 0;
-            z-index: 1030;
-            box-shadow: 0 8px 24px rgba(63,81,181,.25);
-        }
-
-            .topbar .brand {
-                font-weight: 700;
-                letter-spacing: .3px;
-            }
-
-            .topbar .nav-pills .nav-link {
-                color: rgba(255,255,255,.9);
-            }
-
-                .topbar .nav-pills .nav-link.active {
-                    background: #fff;
-                    color: #1f2937;
-                    border-radius: 999px;
-                    font-weight: 700;
-                }
-
-        .btn-ghost {
-            color: #fff;
-            border: 1px solid rgba(255,255,255,.35);
-            background: transparent
-        }
-
-            .btn-ghost:hover {
-                background: rgba(255,255,255,.15)
-            }
-
-        /* Layout */
-        .layout {
-            display: grid;
-            grid-template-columns: var(--sidebar-w) 1fr;
-            gap: 12px;
-            padding: 12px;
-            height: 100%;
-            min-height: 0;
-        }
-
-        @media (max-width: 991.98px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Sidebar */
-        .sidebar {
-            background: #fff;
-            border-radius: var(--radius);
-            box-shadow: 0 10px 24px rgba(16,24,40,.10);
-            overflow: auto;
-            padding: 10px;
-        }
-
-            .sidebar .group {
-                margin-bottom: 8px;
-                border: 1px solid #eef2f7;
-                border-radius: 12px;
-                overflow: hidden
-            }
-
-                .sidebar .group.collapsed .group-items {
-                    display: none
-                }
-
-            .sidebar .group-header {
-                background: #f8fafc;
-                padding: 10px 12px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-
-        .group-title {
-            font-weight: 800;
-            color: #6b7280;
-            letter-spacing: .4px
-        }
-
-        .side-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            border-bottom: 1px dashed #f1f5f9;
-            cursor: pointer;
-        }
-
-            .side-item:last-child {
-                border-bottom: 0
-            }
-
-            .side-item:hover {
-                background: #f9fbff
-            }
-
-        .search {
-            position: relative;
-            margin: 6px
-        }
-
-            .search .bi-search {
-                position: absolute;
-                inset-inline-start: 10px;
-                top: 50%;
-                transform: translateY(-50%);
-                opacity: .6
-            }
-
-            .search input {
-                padding-inline-start: 34px;
-                border-radius: 999px
-            }
-
-        /* Workspace */
-        .workspace {
-            display: grid;
-            grid-template-rows: auto 1fr;
-            gap: 10px;
-            min-height: 0
-        }
-
-        .ws-tabs {
-            background: #fff;
-            border-radius: var(--radius);
-            box-shadow: 0 10px 24px rgba(16,24,40,.10);
-            padding: 6px;
-            display: flex;
-            gap: 8px;
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .chip {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 999px;
-            background: var(--chip-bg);
-            border: 1px solid transparent;
-            user-select: none;
-            flex: 0 0 auto;
-            transition: .18s;
-        }
-
-            .chip.active {
-                background: #111827;
-                color: #fff;
-                border-color: #111827
-            }
-
-            .chip .dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: transparent
-            }
-
-            .chip.dirty .dot {
-                background: #f59e0b
-            }
-
-            .chip .close {
-                background: transparent;
-                border: 0;
-                color: inherit;
-                opacity: .8
-            }
-
-                .chip .close:hover {
-                    opacity: 1
-                }
-
-        .ws-content {
-            position: relative;
-            background: #fff;
-            border-radius: var(--radius);
-            box-shadow: 0 10px 24px rgba(16,24,40,.10);
-            overflow: hidden;
-            min-height: 0;
-        }
-
-        .frame {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: block
-        }
-
-        #frames {
-            height: 100%;
-            min-height: 0
-        }
-
-        .empty {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--muted);
-            text-align: center;
-            padding: 24px
-        }
-
-        .loader {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(180deg,transparent,rgba(0,0,0,.05),transparent)
-        }
-
-        .spinner {
-            width: 28px;
-            height: 28px;
-            border: 3px solid rgba(0,0,0,.2);
-            border-top-color: #3f51b5;
-            border-radius: 50%;
-            animation: spin .85s linear infinite
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg)
-            }
-        }
-
-        /* Mobile small buttons */
-        .mobile-actions {
-            display: none
-        }
-
-        @media (max-width: 991.98px) {
-            .desktop-sidebar {
-                display: none
-            }
-
-            .mobile-actions {
-                display: flex;
-                gap: 6px
-            }
-        }
-
-        /* Drawer (بديل Offcanvas لبوتستراب 4) */
-        .drawer {
-            position: fixed;
-            top: 0;
-            right: 0;
-            height: 100dvh;
-            width: min(92vw, 360px);
-            background: #fff;
-            box-shadow: -8px 0 24px rgba(0,0,0,.2);
-            transform: translateX(100%);
-            transition: transform .22s ease;
-            z-index: 1040;
-            display: flex;
-            flex-direction: column;
-        }
-
-            .drawer.open {
-                transform: translateX(0)
-            }
-
-        .drawer-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            border-bottom: 1px solid #eef2f7
-        }
-
-        .drawer-body {
-            padding: 8px;
-            overflow: auto
-        }
-
-        /* وضع ملء الشاشة للإطارات */
-        .iframe-fullscreen {
-            position: fixed !important;
-            top: 50px;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 2000;
-        }
-        /* لإخفاء عناصر واجهة المستخدم أثناء وضع ملء الشاشة */
-        .fullscreen-hidden {
-            display: none !important;
-        }
-    </style>
-
-
-    <style>
-        /* الشريط العلوي */
-        #fullscreenBar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 50px;
-            background: linear-gradient(90deg, #3f51b5, #1ea6d6);
-            color: #fff;
-            display: none;
-            z-index: 9999;
-            box-shadow: 0 2px 6px rgba(0,0,0,.15);
-        }
-
-            #fullscreenBar .bar-content {
-                height: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 0 16px;
-                font-size: 15px;
-                font-weight: 600;
-            }
-
-            #fullscreenBar .exit-btn {
-                background: #ef4444;
-                border: none;
-                color: #fff;
-                padding: 6px 14px;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                transition: background .2s;
-            }
-
-                #fullscreenBar .exit-btn:hover {
-                    background: #dc2626;
-                }
-        /* نزّل المحتوى عند ظهور الشريط */
-        body.with-fullscreen-bar .app {
-            margin-top: 50px; /* يساوي ارتفاع الشريط */
-        }
-
-        .bmd-form-group {
-            padding-top: 0.75rem;
-        }
-    </style>
-
+    
 
 </head>
 <body>
@@ -753,36 +237,7 @@
 
         /* ===== بيانات القائمة ===== */
         const MENU = {
-            dashboard: { title: 'الرئيسية', groups: [{ title: 'لوحة التحكم', items: [{ id: 'dashboard-overview', icon: 'bi-speedometer2', title: 'الرئيسية', desc: 'نظرة عامة', url: 'pages/dashboard.html' }] }] },
-            schoolYears: { title: 'إدارة السنوات الدراسية', groups: [{ title: 'عمليات', items: [{ id: 'new-year', icon: 'bi-calendar-plus', title: 'إنشاء سنة جديدة', desc: '', url: 'pages/new-year.html' }, { id: 'terms-calendar', icon: 'bi-calendar-week', title: 'تحديد الفصول والتقويم', desc: '', url: '#' }, { id: 'rollover', icon: 'bi-arrows-collapse', title: 'ترحيل الطلاب والعقود', desc: '', url: '#' }, { id: 'link-fees-curricula', icon: 'bi-link-45deg', title: 'ربط الرسوم والمناهج', desc: '', url: '#' }, { id: 'annual-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير سنوية', desc: '', url: '#' }] }] },
-            students: { title: 'الطلاب', groups: [{ title: 'إدارة الطلاب', items: [{ id: 'registration', icon: 'bi-person-plus', title: 'التسجيل والملفات', desc: '', url: '#' }, { id: 'attendance', icon: 'bi-calendar-check', title: 'الحضور والغياب', desc: '', url: '#' }, { id: 'subjects-curricula', icon: 'bi-bar-chart-line', title: 'الأداء الأكاديمي', desc: '', url: '#' }, { id: 'behavior', icon: 'bi-emoji-smile', title: 'السلوك والأنشطة', desc: '', url: '#' }, { id: 'graduation', icon: 'bi-person-check', title: 'التخرج والتحويل', desc: '', url: '#' }] }, { title: 'الكتب الرسمية', items: [{ id: 'certificate-transfer', icon: 'bi-file-earmark-text', title: 'شهادة انتقال', desc: '', url: '#' }, { id: 'certificate-proof', icon: 'bi-file-earmark-text', title: 'شهادة إثبات طالب', desc: '', url: '#' }, { id: 'phase-completion', icon: 'bi-file-earmark-text', title: 'شهادة إنهاء مرحلة', desc: '', url: '#' }, { id: 'good-conduct', icon: 'bi-file-earmark-text', title: 'شهادة حسن سلوك', desc: '', url: '#' }] }, { title: 'إدارة وثائق الطلاب', items: [{ id: 'docs-checklist', icon: 'bi-card-checklist', title: 'قائمة الوثائق المطلوبة', desc: '', url: '#' }, { id: 'docs-entry', icon: 'bi-inbox', title: 'إدخال واستلام الوثائق', desc: '', url: '#' }, { id: 'docs-upload', icon: 'bi-upload', title: 'رفع نسخ إلكترونية وربطها بالطالب', desc: '', url: '#' }, { id: 'docs-store', icon: 'bi-box', title: 'مستودع الوثائق الأصلية', desc: '', url: '#' }, { id: 'docs-alerts', icon: 'bi-bell', title: 'تنبيهات النواقص + تقارير متابعة', desc: '', url: '#' }] }] },
-            schools: {
-                title: 'إدارة المدارس',
-                groups: [
-                    {
-                        title: 'المدارس والمراحل',
-                        items: [
-                            { id: 'manage-schools', icon: 'bi-building', title: 'المدارس', desc: '', url: 'pages/schools.html' },
-                            { id: 'manage-stages', icon: 'bi-diagram-3', title: 'المراحل والصفوف', desc: '', url: 'pages/stages.html' }
-                        ]
-                    }
-                ]
-            },
-
-            academia: { title: 'الأكاديمية', groups: [{ title: 'الأكاديمية ', items: [{ id: 'subjects-curricula', icon: 'bi-journal-bookmark', title: 'المواد والمناهج', desc: '', url: '#' }, { id: 'weekly-plans', icon: 'bi-calendar3-week', title: 'الخطط الأسبوعية', desc: '', url: '#' }, { id: 'exams', icon: 'bi-pencil-square', title: 'الامتحانات', desc: '', url: '#' }, { id: 'e-learning', icon: 'bi-laptop', title: 'التعليم الإلكتروني', desc: '', url: '#' }, { id: 'automatic-schedules', icon: 'bi-table', title: 'الجداول الآلية', desc: '', url: '#' }, { id: 'performance-reports', icon: 'bi-bar-chart', title: 'تقارير الأداء', desc: '', url: '#' }] }] },
-            contracts: { title: 'العقود', groups: [{ title: 'أنواع العقود', items: [{ id: 'parent-contracts', icon: 'bi-file-earmark-text', title: 'عقود أولياء الأمور', desc: '', url: '#' }, { id: 'staff-contracts', icon: 'bi-file-earmark-text', title: 'عقود الموظفين', desc: '', url: '#' }, { id: 'supplier-contracts', icon: 'bi-file-earmark-text', title: 'عقود الموردين', desc: '', url: '#' }] }] },
-            finance: { title: 'المالية', groups: [{ title: 'المالية', items: [{ id: 'installments-bills', icon: 'bi-receipt', title: 'الأقساط والفواتير', desc: '', url: '#' }, { id: 'payment-vouchers', icon: 'bi-cash-coin', title: 'سندات القبض', desc: '', url: '#' }, { id: 'budget-reports', icon: 'bi-file-earmark-bar-graph', title: 'الميزانية والتقارير', desc: '', url: '#' }, { id: 'national-billing', icon: 'bi-link-45deg', title: 'الربط مع الفوترة الوطنية', desc: '', url: '#' }] }, { title: 'التحصيل القانوني', items: [{ id: 'follow-defaulters', icon: 'bi-clock-history', title: 'متابعة المتأخرين', desc: '', url: '#' }, { id: 'warnings', icon: 'bi-exclamation-triangle', title: 'الإنذارات', desc: '', url: '#' }, { id: 'cases-courts', icon: 'bi-gavel', title: 'القضايا والمحاكم', desc: '', url: '#' }, { id: 'payment-status', icon: 'bi-check-circle', title: 'تحديث حالة السداد', desc: '', url: '#' }] }] },
-            hr: { title: 'شؤون الموظفين', groups: [{ title: 'شؤون الموظفين', items: [{ id: 'personal-files', icon: 'bi-person-badge', title: 'الملفات الشخصية', desc: '', url: '#' }, { id: 'salaries-advances', icon: 'bi-cash-stack', title: 'الرواتب والسلف', desc: '', url: '#' }, { id: 'rewards-sanctions', icon: 'bi-gift', title: 'المكافآت والعقوبات', desc: '', url: '#' }, { id: 'leaves-promotions', icon: 'bi-arrow-up-right-circle', title: 'الإجازات والترقيات', desc: '', url: '#' }, { id: 'attendance-shifts', icon: 'bi-clock', title: 'الحضور والانصراف + المناوبات', desc: '', url: '#' }] }, { title: 'التوظيف', items: [{ id: 'vacancy-announcement', icon: 'bi-megaphone', title: 'الإعلان عن الشواغر', desc: '', url: '#' }, { id: 'application-receipt', icon: 'bi-envelope-open', title: 'استقبال الطلبات', desc: '', url: '#' }, { id: 'screening-interviews', icon: 'bi-clipboard-check', title: 'فرز ومقابلات', desc: '', url: '#' }, { id: 'convert-to-employee', icon: 'bi-person-check', title: 'التحويل إلى موظف', desc: '', url: '#' }] }] },
-            transport: { title: 'المواصلات', groups: [{ title: 'المواصلات', items: [{ id: 'buses-drivers', icon: 'bi-bus-front', title: 'إدارة الباصات والسائقين', desc: '', url: '#' }, { id: 'routes', icon: 'bi-map', title: 'الجولات والمسارات', desc: '', url: '#' }, { id: 'gps-tracking', icon: 'bi-geo-alt', title: 'تتبع GPS', desc: '', url: '#' }, { id: 'parent-notifications', icon: 'bi-bell', title: 'إشعارات أولياء الأمور', desc: '', url: '#' }] }] },
-            warehouses: { title: 'المستودعات', groups: [{ title: 'المستودعات', items: [{ id: 'book-management', icon: 'bi-journal', title: 'إدارة الكتب', desc: '', url: '#' }, { id: 'uniform-management', icon: 'bi-shirt', title: 'إدارة الزي', desc: '', url: '#' }, { id: 'pos-students', icon: 'bi-bag', title: 'البيع (POS للطلاب)', desc: '', url: '#' }, { id: 'inventory-alerts', icon: 'bi-exclamation-circle', title: 'الجرد والتنبيهات', desc: '', url: '#' }] }, { title: 'المشتريات', items: [{ id: 'purchase-requests', icon: 'bi-file-earmark-plus', title: 'طلبات الشراء', desc: '', url: '#' }, { id: 'price-offers', icon: 'bi-tags', title: 'عروض الأسعار', desc: '', url: '#' }, { id: 'purchase-orders', icon: 'bi-cart', title: 'أوامر الشراء', desc: '', url: '#' }, { id: 'receiving', icon: 'bi-box-arrow-in-down', title: 'استلام وربط بالمستودع', desc: '', url: '#' }, { id: 'finance-link', icon: 'bi-link-45deg', title: 'الربط مع المالية', desc: '', url: '#' }] }, { title: 'المقصف الذكي', items: [{ id: 'canteen-products', icon: 'bi-list-ul', title: 'قائمة المنتجات والمخزون', desc: '', url: '#' }, { id: 'canteen-pos', icon: 'bi-credit-card', title: 'نقطة البيع (POS)', desc: '', url: '#' }, { id: 'student-wallet', icon: 'bi-wallet', title: 'الدفع بمحفظة الطالب / بطاقة NFC', desc: '', url: '#' }, { id: 'parent-notifications-canteen', icon: 'bi-bell', title: 'إشعارات لولي الأمر', desc: '', url: '#' }, { id: 'sales-reports', icon: 'bi-graph-up-arrow', title: 'تقارير المبيعات والأرباح', desc: '', url: '#' }, { id: 'healthy-options', icon: 'bi-heart', title: 'خيارات التغذية الصحية', desc: '', url: '#' }] }] },
-            archiving: { title: 'الأرشفة', groups: [{ title: 'الأرشفة', items: [{ id: 'student-files-archive', icon: 'bi-folder', title: 'ملفات الطلاب', desc: '', url: '#' }, { id: 'contracts-archive', icon: 'bi-file-earmark-zip', title: 'العقود', desc: '', url: '#' }, { id: 'admin-documents', icon: 'bi-file-earmark-richtext', title: 'الوثائق الإدارية', desc: '', url: '#' }, { id: 'outgoing-incoming-books', icon: 'bi-journal-arrow-down', title: 'الكتب الصادرة والواردة', desc: '', url: '#' }, { id: 'official-copies', icon: 'bi-journal-arrow-up', title: 'نسخ الكتب الرسمية + الوثائق', desc: '', url: '#' }] }] },
-            notes: { title: 'الملاحظات والقضايا', groups: [{ title: 'الملاحظات والقضايا', items: [{ id: 'parents-complaints', icon: 'bi-chat-dots', title: 'شكاوى أولياء الأمور', desc: '', url: '#' }, { id: 'student-cases', icon: 'bi-people', title: 'قضايا الطلاب', desc: '', url: '#' }, { id: 'staff-cases', icon: 'bi-person', title: 'قضايا الموظفين', desc: '', url: '#' }] }] },
-            circulars: { title: 'التعاميم الإدارية', groups: [{ title: 'التعاميم الإدارية', items: [{ id: 'issue-circulars', icon: 'bi-send', title: 'إصدار التعاميم', desc: '', url: '#' }, { id: 'follow-implementation', icon: 'bi-check2-square', title: 'متابعة التنفيذ', desc: '', url: '#' }] }] },
-            permissions: { title: 'الصلاحيات', groups: [{ title: 'الصلاحيات', items: [{ id: 'user-management', icon: 'bi-person-lines-fill', title: 'إدارة المستخدمين', desc: '', url: '#' }, { id: 'role-management', icon: 'bi-shield-lock', title: 'المجموعات والصلاحيات التفصيلية', desc: '', url: '#' }] }] },
-            monitoring: { title: 'المراقبة', groups: [{ title: 'المراقبة', items: [{ id: 'logs-tracking', icon: 'bi-hdd-network', title: 'تتبع العمليات (Logs)', desc: '', url: '#' }, { id: 'performance-reports-mon', icon: 'bi-bar-chart-line', title: 'تقارير الأداء', desc: '', url: '#' }] }] },
-            centralReports: { title: 'نظام التقارير المركزي', groups: [{ title: 'نظام التقارير المركزي', items: [{ id: 'student-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير الطلاب', desc: '', url: '#' }, { id: 'academia-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير الأكاديميا', desc: '', url: '#' }, { id: 'contracts-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير العقود', desc: '', url: '#' }, { id: 'finance-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير المالية', desc: '', url: '#' }, { id: 'hr-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير الموظفين', desc: '', url: '#' }, { id: 'transport-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير المواصلات', desc: '', url: '#' }, { id: 'warehouses-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير المستودعات والمقصف', desc: '', url: '#' }, { id: 'archiving-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير الأرشفة', desc: '', url: '#' }, { id: 'notes-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير الملاحظات والقضايا', desc: '', url: '#' }, { id: 'management-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير الإدارة العليا (KPIs + AI + What-if)', desc: '', url: '#' }] }] },
-            upperManagement: { title: 'الإدارة العليا', groups: [{ title: 'الإدارة العليا', items: [{ id: 'executive-dashboard', icon: 'bi-speedometer2', title: 'Executive Dashboard', desc: '', url: '#' }, { id: 'kpi', icon: 'bi-bar-chart', title: 'مؤشرات الأداء KPIs', desc: '', url: '#' }, { id: 'strategic-reports', icon: 'bi-file-earmark-bar-graph', title: 'تقارير استراتيجية', desc: '', url: '#' }] }] }
-        };
+            };
 
         /* ===== الحالة ===== */
         const KEY = 'school_shell_material_v1';
@@ -801,38 +256,38 @@
         }
 
         /* ===== بناء Sidebar (desktop/mobile) ===== */
-        function buildSidebar(container) {
-            container.innerHTML = '';
-            const sec = MENU[state.main];
-            sec.groups.forEach((g, gi) => {
-                const box = document.createElement('div'); box.className = 'group';
-                box.innerHTML = `
-                                    <div class="group-header" data-toggle="${gi}">
-                                      <div class="group-title">${g.title}</div>
-                                      <i class="bi bi-chevron-down"></i>
-                                    </div>
-                                    <div class="group-items"></div>
-                                  `;
-                const wrap = box.querySelector('.group-items');
-                g.items.forEach(it => {
-                    const row = document.createElement('div');
-                    row.className = 'side-item';
-                    row.dataset.open = it.id; row.dataset.url = it.url; row.dataset.title = it.title;
-                    row.innerHTML = `<i class="bi ${it.icon}"></i><div><div class="font-weight-bold">${it.title}</div><small class="text-muted">${it.desc || ''}</small></div>`;
-                    row.addEventListener('click', () => {
-                        openTab({ id: it.id, title: it.title, url: it.url });
-                        toastInfo('تم فتح: ' + it.title);
-                        drawerClose(); // إن كان من الموبايل
-                    });
-                    wrap.appendChild(row);
-                });
-                container.appendChild(box);
-            });
+        //function buildSidebar(container) {
+        //    container.innerHTML = '';
+        //    const sec = MENU[state.main];
+        //    sec.groups.forEach((g, gi) => {
+        //        const box = document.createElement('div'); box.className = 'group';
+        //        box.innerHTML = `
+        //                            <div class="group-header" data-toggle="${gi}">
+        //                              <div class="group-title">${g.title}</div>
+        //                              <i class="bi bi-chevron-down"></i>
+        //                            </div>
+        //                            <div class="group-items"></div>
+        //                          `;
+        //        const wrap = box.querySelector('.group-items');
+        //        g.items.forEach(it => {
+        //            const row = document.createElement('div');
+        //            row.className = 'side-item';
+        //            row.dataset.open = it.id; row.dataset.url = it.url; row.dataset.title = it.title;
+        //            row.innerHTML = `<i class="bi ${it.icon}"></i><div><div class="font-weight-bold">${it.title}</div><small class="text-muted">${it.desc || ''}</small></div>`;
+        //            row.addEventListener('click', () => {
+        //                openTab({ id: it.id, title: it.title, url: it.url });
+        //                toastInfo('تم فتح: ' + it.title);
+        //                drawerClose(); // إن كان من الموبايل
+        //            });
+        //            wrap.appendChild(row);
+        //        });
+        //        container.appendChild(box);
+        //    });
 
-            container.querySelectorAll('.group-header').forEach(h => {
-                h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
-            });
-        }
+        //    container.querySelectorAll('.group-header').forEach(h => {
+        //        h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
+        //    });
+        //}
 
         /* ===== Workspace Tabs ===== */
         const tabsBar = document.getElementById('tabsBar');
@@ -955,8 +410,9 @@
                 root.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
                 a.classList.add('active');
                 state.main = a.dataset.main; save();
-                buildSidebar(document.getElementById('sidebar'));
-                buildSidebar(document.getElementById('sidebarMobile'));
+                buildSidebar(document.getElementById('sidebar'), state.main);
+                buildSidebar(document.getElementById('sidebarMobile'), state.main);
+
             });
         }
         bindMainTabs('mainTabs');
@@ -1022,15 +478,15 @@
             load();
 
             if (!fromApi) {
-                // إذا ما إجا من API، جرّب استعمل fallback
                 if (!window.MENU || Object.keys(window.MENU).length === 0) {
                     console.warn("⚠️ API menu not available, using fallback");
                     window.MENU = window.MENU_FALLBACK || {};
                 }
             }
 
-            buildSidebar(document.getElementById('sidebar'));
-            buildSidebar(document.getElementById('sidebarMobile'));
+            // 🟢 استخدم buildSidebar الجديدة مع state.main
+            buildSidebar(document.getElementById('sidebar'), state.main);
+            buildSidebar(document.getElementById('sidebarMobile'), state.main);
 
             state.tabs.forEach(t => ensureFrame(t));
             if (state.tabs.length === 0) {
@@ -1040,6 +496,7 @@
             }
             syncThemeIcon();
         }
+
 
         // شغّله مبدئياً
         boot();

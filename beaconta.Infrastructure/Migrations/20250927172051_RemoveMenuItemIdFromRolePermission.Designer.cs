@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using beaconta.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using beaconta.Infrastructure.Data;
 namespace beaconta.Infrastructure.Migrations
 {
     [DbContext(typeof(BeacontaDb))]
-    partial class BeacontaDbModelSnapshot : ModelSnapshot
+    [Migration("20250927172051_RemoveMenuItemIdFromRolePermission")]
+    partial class RemoveMenuItemIdFromRolePermission
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -93,7 +96,7 @@ namespace beaconta.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 9, 27, 17, 20, 51, 349, DateTimeKind.Utc).AddTicks(9608),
                             CreatedBy = "system",
                             RoleId = 1,
                             UserId = 1

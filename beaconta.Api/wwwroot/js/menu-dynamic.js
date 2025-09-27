@@ -4,7 +4,8 @@
         const res = await apiGet(API.base + "/menu/my");
         const data = res || [];
 
-        const MENU = {};
+        window.MENU = MENU;
+
         data.forEach(section => {
             MENU[section.sectionKey] = {
                 title: section.title,
@@ -25,18 +26,31 @@
         // خزّن في window
         window.MENU = MENU;
 
-        // 2️⃣ بناء nav bar ديناميكي
+        // 🟢 2️⃣ دالة التحقق من الصلاحيات
+        function can(key) {
+            // لو ما في نظام صلاحيات لسه، رجّع true
+            if (!window.USER_KEYS) return true;
+            return window.USER_KEYS.includes(key);
+        }
+
+        // 🟢 3️⃣ بناء nav bar ديناميكي (مع فلترة)
         function buildNav(containerId) {
             const root = document.getElementById(containerId);
             root.innerHTML = "";
             let firstKey = null;
 
-            Object.entries(MENU).forEach(([key, sec], idx) => {
-                if (idx === 0) firstKey = key;
+            Object.entries(MENU).forEach(([key, sec]) => {
+                // ✨ تحقق إن القسم يحتوي عناصر مسموحة
+                const hasPerm = sec.groups.some(g =>
+                    g.items.some(it => can(it.id))
+                );
+                if (!hasPerm) return;
+
+                if (!firstKey) firstKey = key;
                 const li = document.createElement("li");
                 li.className = "nav-item";
                 li.innerHTML = `
-                    <a class="nav-link ${idx === 0 ? "active" : ""}" data-main="${key}" href="#">
+                    <a class="nav-link ${firstKey === key ? "active" : ""}" data-main="${key}" href="#">
                         <i class="bi ${sec.icon}"></i>
                         <span>${sec.title}</span>
                     </a>`;
@@ -49,32 +63,36 @@
         const firstTab = buildNav("mainTabs");
         buildNav("mainTabsMobile");
 
-        // 3️⃣ بناء sidebar عند اختيار تبويب
-        function buildSidebar(container, mainKey) {
-            container.innerHTML = "";
+        // menu-dynamic.js
+        window.buildSidebar = function (container, mainKey) {
+            container.innerHTML = ""; // 🟢 مهم لمسح القديم
+
             const sec = MENU[mainKey];
-            if (!sec) return;
+            if (!sec || !Array.isArray(sec.groups)) return;
 
             sec.groups.forEach((g, gi) => {
+                const items = (g.items || []).filter(it => can(it.id));
+                if (items.length === 0) return;
+
                 const box = document.createElement("div");
                 box.className = "group";
                 box.innerHTML = `
-                    <div class="group-header" data-toggle="${gi}">
-                        <div class="group-title">${g.title}</div>
-                        <i class="bi bi-chevron-down"></i>
-                    </div>
-                    <div class="group-items"></div>`;
+          <div class="group-header" data-toggle="${gi}">
+            <div class="group-title">${g.title}</div>
+            <i class="bi bi-chevron-down"></i>
+          </div>
+          <div class="group-items"></div>`;
                 const wrap = box.querySelector(".group-items");
 
-                g.items.forEach(it => {
+                items.forEach(it => {
                     const row = document.createElement("div");
                     row.className = "side-item";
                     row.dataset.open = it.id;
                     row.dataset.url = it.url;
                     row.dataset.title = it.title;
                     row.innerHTML = `<i class="bi ${it.icon}"></i>
-                                     <div><div class="font-weight-bold">${it.title}</div>
-                                     <small class="text-muted">${it.desc}</small></div>`;
+                             <div><div class="font-weight-bold">${it.title}</div>
+                             <small class="text-muted">${it.desc}</small></div>`;
                     row.addEventListener("click", () => {
                         openTab({ id: it.id, title: it.title, url: it.url });
                         drawerClose();
@@ -84,9 +102,9 @@
 
                 container.appendChild(box);
             });
-        }
+        };
 
-        // 4️⃣ اربط الـ nav bar بالـ sidebar
+        // 🟢 5️⃣ ربط الـ nav bar مع الـ sidebar
         function bindMainTabs(containerId, sidebarId) {
             const root = document.getElementById(containerId);
             root.addEventListener("click", e => {
@@ -103,13 +121,13 @@
         bindMainTabs("mainTabs", "sidebar");
         bindMainTabs("mainTabsMobile", "sidebarMobile");
 
-        // 5️⃣ أول مرة: حمل أول تبويب
+        // 🟢 6️⃣ أول مرة: افتح أول تبويب مسموح
         if (firstTab) {
             buildSidebar(document.getElementById("sidebar"), firstTab);
             buildSidebar(document.getElementById("sidebarMobile"), firstTab);
         }
 
-        console.log("✅ Dynamic MENU loaded:", MENU);
+        console.log("✅ Dynamic MENU loaded with permissions:", MENU);
 
     } catch (err) {
         console.error("❌ فشل تحميل القائمة:", err);

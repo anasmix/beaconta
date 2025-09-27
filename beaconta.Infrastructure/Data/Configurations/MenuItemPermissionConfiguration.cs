@@ -10,12 +10,20 @@ namespace beaconta.Infrastructure.Data.Configurations
         {
             b.ToTable("MenuItemPermissions");
 
-            // المفتاح الأساسي: MenuItemId + PermissionKey
-            b.HasKey(x => new { x.MenuItemId, x.PermissionKey });
+            // ✅ استخدم Id من BaseEntity كمفتاح أساسي
+            b.HasKey(x => x.Id);
 
             b.Property(x => x.PermissionKey)
                 .IsRequired()
                 .HasMaxLength(200);
+
+            // ✅ منع التكرار على نفس العنصر ونفس المفتاح
+            b.HasIndex(x => new { x.MenuItemId, x.PermissionKey }).IsUnique();
+
+            b.HasOne(x => x.MenuItem)
+                .WithMany(i => i.MenuItemPermissions)
+                .HasForeignKey(x => x.MenuItemId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
