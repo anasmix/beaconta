@@ -14,29 +14,42 @@ namespace beaconta.Infrastructure.Services
             _context = context;
         }
 
+        // ✅ إرجاع كل MenuItems كـ "Permissions"
         public async Task<IEnumerable<PermissionDto>> GetAllAsync()
         {
-            return await _context.Permissions
-                .Select(p => new PermissionDto
+            return await _context.MenuItems
+                .Include(mi => mi.Group)
+                    .ThenInclude(g => g.Section)
+                .OrderBy(mi => mi.Group.Section.SortOrder)
+                .ThenBy(mi => mi.Group.SortOrder)
+                .ThenBy(mi => mi.SortOrder)
+                .Select(mi => new PermissionDto
                 {
-                    Id = p.Id,
-                    Key = p.Key,
-                    Name = p.Name,
-                    Category = p.Category
-                }).ToListAsync();
+                    Id = mi.Id,
+                    Key = mi.ItemKey,               // 🔴 ItemKey بدل Permission.Key
+                    Name = mi.Title,                // 🔴 Title بدل Permission.Name
+                    Category = mi.Group.Section.Title // 🔴 Section كـ Category
+                })
+                .ToListAsync();
         }
 
+        // ✅ إرجاع MenuItems حسب Section.Category
         public async Task<IEnumerable<PermissionDto>> GetByCategoryAsync(string category)
         {
-            return await _context.Permissions
-                .Where(p => p.Category == category)
-                .Select(p => new PermissionDto
+            return await _context.MenuItems
+                .Include(mi => mi.Group)
+                    .ThenInclude(g => g.Section)
+                .Where(mi => mi.Group.Section.Title == category)
+                .OrderBy(mi => mi.Group.SortOrder)
+                .ThenBy(mi => mi.SortOrder)
+                .Select(mi => new PermissionDto
                 {
-                    Id = p.Id,
-                    Key = p.Key,
-                    Name = p.Name,
-                    Category = p.Category
-                }).ToListAsync();
+                    Id = mi.Id,
+                    Key = mi.ItemKey,
+                    Name = mi.Title,
+                    Category = mi.Group.Section.Title
+                })
+                .ToListAsync();
         }
     }
 }

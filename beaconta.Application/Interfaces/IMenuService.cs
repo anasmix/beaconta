@@ -5,6 +5,7 @@ namespace beaconta.Application.Interfaces
     public interface IMenuService
     {
         Task<IReadOnlyList<MenuSectionDto>> GetMenuForCurrentUserAsync(CancellationToken ct = default);
+        Task<IReadOnlyList<MenuSectionDto>> GetMenuCatalogAsync(CancellationToken ct = default);
         Task InvalidateCacheForUserAsync(int userId);
     }
 }

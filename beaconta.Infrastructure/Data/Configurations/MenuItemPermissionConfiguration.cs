@@ -9,7 +9,13 @@ namespace beaconta.Infrastructure.Data.Configurations
         public void Configure(EntityTypeBuilder<MenuItemPermission> b)
         {
             b.ToTable("MenuItemPermissions");
-            b.HasKey(x => new { x.MenuItemId, x.PermissionId });
+
+            // المفتاح الأساسي: MenuItemId + PermissionKey
+            b.HasKey(x => new { x.MenuItemId, x.PermissionKey });
+
+            b.Property(x => x.PermissionKey)
+                .IsRequired()
+                .HasMaxLength(200);
         }
     }
 }

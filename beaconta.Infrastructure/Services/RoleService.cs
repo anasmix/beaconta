@@ -19,13 +19,16 @@ namespace beaconta.Infrastructure.Services
         {
             return await _context.Roles
                 .Include(r => r.Permissions)
+                    .ThenInclude(rp => rp.MenuItem) // نوصل للـ MenuItem
                 .Select(r => new RoleDto
                 {
                     Id = r.Id,
                     Key = r.Key,
                     Name = r.Name,
                     UsersCount = _context.UserRoles.Count(ur => ur.RoleId == r.Id),
-                    PermissionIds = r.Permissions.Select(p => p.PermissionId).ToList(),
+                    PermissionIds = r.Permissions
+                        .Select(p => p.MenuItem.ItemKey) // 🔴 نرجع Keys
+                        .ToList(),
                     CreatedAt = r.CreatedAt
                 })
                 .ToListAsync();
@@ -35,6 +38,7 @@ namespace beaconta.Infrastructure.Services
         {
             var role = await _context.Roles
                 .Include(r => r.Permissions)
+                    .ThenInclude(rp => rp.MenuItem) // للوصول للـ ItemKey
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (role == null) return null;
@@ -45,7 +49,9 @@ namespace beaconta.Infrastructure.Services
                 Key = role.Key,
                 Name = role.Name,
                 UsersCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == id),
-                PermissionIds = role.Permissions.Select(p => p.PermissionId).ToList(),
+                PermissionIds = role.Permissions
+                    .Select(p => p.MenuItem.ItemKey) // 🔴 نرجع Keys
+                    .ToList(),
                 CreatedAt = role.CreatedAt
             };
         }
@@ -68,7 +74,7 @@ namespace beaconta.Infrastructure.Services
                 Key = role.Key,
                 Name = role.Name,
                 UsersCount = 0,
-                PermissionIds = new List<int>(),
+                PermissionIds = new List<string>(), // 🔴 string
                 CreatedAt = role.CreatedAt
             };
         }
@@ -76,7 +82,6 @@ namespace beaconta.Infrastructure.Services
         public async Task<RoleDto?> UpdateNameAsync(int id, string newName)
         {
             var role = await _context.Roles
-                .Include(r => r.Permissions)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (role == null) return null;
@@ -91,7 +96,7 @@ namespace beaconta.Infrastructure.Services
                 Key = role.Key,
                 Name = role.Name,
                 UsersCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == id),
-                PermissionIds = role.Permissions.Select(p => p.PermissionId).ToList(),
+                PermissionIds = new List<string>(), // ممكن ترجع فارغ أو تعمل Include لو بدك
                 CreatedAt = role.CreatedAt
             };
         }
@@ -122,16 +127,20 @@ namespace beaconta.Infrastructure.Services
 
             if (role == null) return null;
 
+            // حذف القديم
             _context.RolePermissions.RemoveRange(role.Permissions);
 
-            var permissions = await _context.Permissions
-                .Where(p => dto.PermissionIds.Contains(p.Id))
+            // جلب IDs من جدول MenuItems بناءً على الـ Keys
+            var menuItemIds = await _context.MenuItems
+                .Where(m => dto.PermissionIds.Contains(m.ItemKey))
+                .Select(m => m.Id)
                 .ToListAsync();
 
-            role.Permissions = permissions.Select(p => new RolePermission
+            // إضافة الجديد
+            role.Permissions = menuItemIds.Select(id => new RolePermission
             {
                 RoleId = role.Id,
-                PermissionId = p.Id,
+                MenuItemId = id, // 🔴 هنا صار مرتبط بـ MenuItem
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "system"
             }).ToList();
@@ -144,7 +153,7 @@ namespace beaconta.Infrastructure.Services
                 Key = role.Key,
                 Name = role.Name,
                 UsersCount = await _context.UserRoles.CountAsync(ur => ur.RoleId == role.Id),
-                PermissionIds = role.Permissions.Select(rp => rp.PermissionId).ToList(),
+                PermissionIds = dto.PermissionIds, // 🔴 نرجع Keys
                 CreatedAt = role.CreatedAt
             };
         }
@@ -166,7 +175,7 @@ namespace beaconta.Infrastructure.Services
             toRole.Permissions = fromRole.Permissions.Select(p => new RolePermission
             {
                 RoleId = toRoleId,
-                PermissionId = p.PermissionId,
+                MenuItemId = p.MenuItemId, // 🔴 بدل PermissionId
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "system"
             }).ToList();
@@ -189,10 +198,9 @@ namespace beaconta.Infrastructure.Services
                     Phone = ur.User.Phone,
                     Status = ur.User.Status,
                     LastLogin = ur.User.LastLogin,
-                    Roles = ur.User.UserRoles.Select(r => r.Role.Name).ToList() // ✅ هنا
+                    Roles = ur.User.UserRoles.Select(r => r.Role.Name).ToList()
                 })
                 .ToListAsync();
         }
-
     }
 }

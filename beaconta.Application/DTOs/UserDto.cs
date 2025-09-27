@@ -12,5 +12,8 @@
 
         // 🔹 بدال RoleName
         public List<string> Roles { get; set; } = new();
+        // معرفات الأدوار (للاستخدام في شاشة التعديل)
+        public List<int> RoleIds { get; set; } = new();
+    
     }
 }

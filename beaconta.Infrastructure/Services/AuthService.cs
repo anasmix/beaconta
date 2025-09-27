@@ -1,5 +1,4 @@
-﻿// beaconta.Infrastructure/Services/AuthService.cs
-using beaconta.Application.DTOs;
+﻿using beaconta.Application.DTOs;
 using beaconta.Application.Interfaces;
 using beaconta.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +27,7 @@ namespace beaconta.Infrastructure.Services
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                         .ThenInclude(r => r.Permissions)
-                            .ThenInclude(rp => rp.Permission)
+                            .ThenInclude(rp => rp.MenuItem) // 🔴 بدل Permission
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
 
             if (user == null)
@@ -40,23 +39,23 @@ namespace beaconta.Infrastructure.Services
 
             // ✅ الكلايمز الأساسية
             var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Name, user.Username),
-        new Claim("FullName", user.FullName ?? "")
-    };
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim("FullName", user.FullName ?? "")
+            };
 
             // ✅ إضافة جميع الأدوار (Key + Name)
             foreach (var role in user.UserRoles.Select(ur => ur.Role))
             {
-                claims.Add(new Claim(ClaimTypes.Role, role.Key));      // "admin"
-                claims.Add(new Claim("role_name", role.Name));         // "Admin"
+                claims.Add(new Claim(ClaimTypes.Role, role.Key));  // "admin"
+                claims.Add(new Claim("role_name", role.Name));     // "Admin"
             }
 
-            // ✅ إضافة جميع الصلاحيات
+            // ✅ إضافة جميع الصلاحيات (ItemKey من MenuItem)
             var permissions = user.UserRoles
                 .SelectMany(ur => ur.Role.Permissions)
-                .Select(rp => rp.Permission!.Key)
+                .Select(rp => rp.MenuItem.ItemKey) // 🔴 بدل Permission.Key
                 .Distinct();
 
             foreach (var perm in permissions)
@@ -82,7 +81,5 @@ namespace beaconta.Infrastructure.Services
                 ExpiresAtUtc = expire
             };
         }
-
-
     }
 }

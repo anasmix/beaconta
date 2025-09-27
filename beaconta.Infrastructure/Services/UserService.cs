@@ -29,8 +29,8 @@ namespace beaconta.Infrastructure.Services
                     Phone = u.Phone,
                     Status = u.Status,
                     LastLogin = u.LastLogin,
-                    // ✅ لو المستخدم عنده أكثر من Role، ناخذ أول واحد أو نجمعهم
-                    Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList()
+                    Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList(),
+                    RoleIds = u.UserRoles.Select(ur => ur.RoleId).ToList()
                 })
                 .ToListAsync();
         }
@@ -50,8 +50,8 @@ namespace beaconta.Infrastructure.Services
                     Phone = u.Phone,
                     Status = u.Status,
                     LastLogin = u.LastLogin,
-                    Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList()
-
+                    Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList(),
+                    RoleIds = u.UserRoles.Select(ur => ur.RoleId).ToList()
                 })
                 .FirstOrDefaultAsync();
         }
@@ -65,13 +65,13 @@ namespace beaconta.Infrastructure.Services
                 Email = dto.Email,
                 Phone = dto.Phone,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                Status = "active"
+                Status = "active" // 👈 دايمًا lowercase
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // ✅ ربط المستخدم بالأدوار
+            // ربط المستخدم بالأدوار
             if (dto.RoleIds != null && dto.RoleIds.Any())
             {
                 foreach (var roleId in dto.RoleIds)
@@ -101,10 +101,10 @@ namespace beaconta.Infrastructure.Services
             user.FullName = dto.FullName;
             user.Email = dto.Email;
             user.Phone = dto.Phone;
-            user.Status = dto.Status;
+            user.Status = dto.Status.ToLower() == "inactive" ? "inactive" : "active"; // 👈 تأكيد lowercase
             user.UpdatedAt = DateTime.UtcNow;
 
-            // ✅ تحديث الأدوار
+            // تحديث الأدوار
             _context.UserRoles.RemoveRange(user.UserRoles);
             if (dto.RoleIds != null && dto.RoleIds.Any())
             {
@@ -143,7 +143,9 @@ namespace beaconta.Infrastructure.Services
             var user = await _context.Users.FindAsync(id);
             if (user == null) return false;
 
+            // 👈 التبديل يعتمد lowercase
             user.Status = user.Status == "active" ? "inactive" : "active";
+
             await _context.SaveChangesAsync();
             return true;
         }

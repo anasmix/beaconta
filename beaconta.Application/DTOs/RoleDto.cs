@@ -13,8 +13,9 @@
         public int UsersCount { get; set; }
 
         // بدل strings → IDs
-        public List<int> PermissionIds { get; set; } = new();
+        public List<string> PermissionIds { get; set; } = new(); // 🔴 strings
 
         public DateTime CreatedAt { get; set; }
     }
+
 }

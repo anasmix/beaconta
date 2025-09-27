@@ -1,16 +1,14 @@
-﻿using System.Text.Json.Serialization;
+﻿using beaconta.Domain.Entities;
+using System.Text.Json.Serialization;
 
-namespace beaconta.Domain.Entities
+public class RolePermission : BaseEntity
 {
-    public class RolePermission : BaseEntity
-    {
-        public int RoleId { get; set; }
-        public int PermissionId { get; set; }
+    public int RoleId { get; set; }
+    public int MenuItemId { get; set; }   // 🔴 بدل PermissionId
 
-        [JsonIgnore]
-        public Role Role { get; set; } = null!;
+    [JsonIgnore]
+    public Role Role { get; set; } = null!;
 
-        [JsonIgnore]
-        public Permission Permission { get; set; } = null!;
-    }
+    [JsonIgnore]
+    public MenuItem MenuItem { get; set; } = null!; // 🔴 الربط مع MenuItem
 }

@@ -12,25 +12,29 @@ namespace beaconta.Infrastructure.Services
 
         public async Task<List<MenuSection>> LoadFullMenuAsync(CancellationToken ct)
         {
-            // ملاحظة: لا تستخدم OrderBy داخل Include، رتب أثناء الـ DTO mapping
+            // جلب كل الأقسام مع المجموعات والعناصر والصلاحيات (PermissionKeys)
             return await _db.MenuSections
                 .AsNoTracking()
                 .Include(s => s.Groups)
                     .ThenInclude(g => g.Items)
                         .ThenInclude(i => i.MenuItemPermissions)
-                            .ThenInclude(ip => ip.Permission)
                 .ToListAsync(ct);
         }
 
         public async Task<HashSet<string>> GetPermissionKeysForUserAsync(int userId, CancellationToken ct)
         {
-            // Roles -> RolePermissions -> Permission.Key
+            // Roles -> RolePermissions -> MenuItemId -> MenuItemPermissions -> PermissionKey
             var keys = await _db.UserRoles
-                .Where(ur => ur.UserId == userId)
-                .SelectMany(ur => ur.Role.Permissions)
-                .Select(rp => rp.Permission.Key)
-                .Distinct()
-                .ToListAsync(ct);
+        .Where(ur => ur.UserId == userId)
+.SelectMany(ur => ur.Role.Permissions) // RolePermissions
+.Join(_db.MenuItems,
+      rp => rp.MenuItemId,   // 👈 صار يربط على MenuItemId
+      mi => mi.Id,
+      (rp, mi) => mi)
+.SelectMany(mi => mi.MenuItemPermissions)
+.Select(mip => mip.PermissionKey)   // 👈 نرجع المفاتيح (string)
+.Distinct()
+.ToListAsync(ct);
 
             return keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         }

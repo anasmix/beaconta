@@ -39,15 +39,16 @@ namespace beaconta.Domain.Entities
 
         public ICollection<MenuItemPermission> MenuItemPermissions { get; set; } = new List<MenuItemPermission>();
     }
+
     public class MenuItemPermission : BaseEntity
     {
-        public int Id { get; set; }   // 🔑 المفتاح الأساسي
-
         public int MenuItemId { get; set; }
         public MenuItem MenuItem { get; set; } = default!;
 
-        public int PermissionId { get; set; }
+        public int PermissionId { get; set; }   // موجود في جدول DB
         public Permission Permission { get; set; } = default!;
     }
+
+
 
 }

@@ -16,8 +16,7 @@ namespace beaconta.Infrastructure.Data
 
         public DbSet<User> Users => Set<User>();
         public DbSet<Role> Roles => Set<Role>();
-        public DbSet<UserRole> UserRoles => Set<UserRole>();
-        public DbSet<Permission> Permissions => Set<Permission>();
+        public DbSet<UserRole> UserRoles => Set<UserRole>(); 
         public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
         public DbSet<MenuSection> MenuSections => Set<MenuSection>();
@@ -49,7 +48,7 @@ namespace beaconta.Infrastructure.Data
 
             // 🔹 RolePermission (Many-to-Many between Role & Permission)
             modelBuilder.Entity<RolePermission>()
-                .HasKey(rp => new { rp.RoleId, rp.PermissionId });
+        .HasKey(rp => new { rp.RoleId, rp.MenuItemId });
 
             modelBuilder.Entity<RolePermission>()
                 .HasOne(rp => rp.Role)
@@ -57,9 +56,10 @@ namespace beaconta.Infrastructure.Data
                 .HasForeignKey(rp => rp.RoleId);
 
             modelBuilder.Entity<RolePermission>()
-                .HasOne(rp => rp.Permission)
+                .HasOne(rp => rp.MenuItem)
                 .WithMany()
-                .HasForeignKey(rp => rp.PermissionId);
+                .HasForeignKey(rp => rp.MenuItemId);
+
 
             // ✅ Seed Admin Role
             modelBuilder.Entity<Role>().HasData(

@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using beaconta.Application.DTOs;
+﻿using beaconta.Application.DTOs;
 using beaconta.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +28,7 @@ namespace beaconta.Api.Controllers
         {
             if (string.IsNullOrWhiteSpace(dto?.Name))
                 return BadRequest("اسم المجموعة مطلوب.");
+
             var role = await _service.CreateAsync(dto.Name);
             return Ok(role);
         }
@@ -40,49 +40,27 @@ namespace beaconta.Api.Controllers
                 return BadRequest("اسم المجموعة مطلوب.");
 
             var updatedRole = await _service.UpdateNameAsync(id, dto.Name);
-            if (updatedRole == null)
-                return NotFound();
-
-            return Ok(updatedRole);
+            return updatedRole == null ? NotFound() : Ok(updatedRole);
         }
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
             var success = await _service.DeleteAsync(id);
-
             if (!success)
                 return BadRequest(new { message = "لا يمكن حذف المجموعة (غير موجودة أو مرتبطة بمستخدمين)." });
 
             return Ok(new { message = "تم الحذف بنجاح." });
         }
 
-
-        // يقبل body: [1,2,3] أو { permissionIds: [1,2,3] }
+        // 🔹 تحديث الصلاحيات باستخدام Keys
         [HttpPut("{id:int}/permissions")]
-        public async Task<IActionResult> UpdatePermissions(int id, [FromBody] JsonElement body)
+        public async Task<IActionResult> UpdatePermissions(int id, [FromBody] UpdateRolePermissionsDto dto)
         {
-            List<int> permIds;
+            if (dto == null || dto.PermissionIds == null || !dto.PermissionIds.Any())
+                return BadRequest("قائمة الصلاحيات مطلوبة.");
 
-            if (body.ValueKind == JsonValueKind.Array)
-            {
-                permIds = body.EnumerateArray()
-                              .Where(x => x.ValueKind == JsonValueKind.Number)
-                              .Select(x => x.GetInt32()).ToList();
-            }
-            else if (body.ValueKind == JsonValueKind.Object &&
-                     body.TryGetProperty("permissionIds", out var p) &&
-                     p.ValueKind == JsonValueKind.Array)
-            {
-                permIds = p.EnumerateArray()
-                           .Where(x => x.ValueKind == JsonValueKind.Number)
-                           .Select(x => x.GetInt32()).ToList();
-            }
-            else
-            {
-                return BadRequest("صيغة الطلب غير صحيحة.");
-            }
-
-            var dto = new UpdateRolePermissionsDto { RoleId = id, PermissionIds = permIds };
+            dto.RoleId = id;
             var updatedRole = await _service.UpdatePermissionsAsync(dto);
             return updatedRole == null ? NotFound() : Ok(updatedRole);
         }
@@ -94,13 +72,18 @@ namespace beaconta.Api.Controllers
         [HttpPost("{id:int}/clone")]
         public async Task<IActionResult> ClonePermissions(int id, [FromBody] CloneRoleDto dto)
         {
-            if (dto == null || dto.FromRoleId <= 0) return BadRequest("fromRoleId مطلوب.");
-            if (dto.FromRoleId == id) return BadRequest("لا يمكن النسخ من نفس المجموعة.");
+            if (dto == null || dto.FromRoleId <= 0)
+                return BadRequest("fromRoleId مطلوب.");
+            if (dto.FromRoleId == id)
+                return BadRequest("لا يمكن النسخ من نفس المجموعة.");
 
             var updated = await _service.ClonePermissionsAsync(dto.FromRoleId, id);
-            return updated == null ? BadRequest("فشل نسخ الصلاحيات.") : Ok(updated); // ✅ يرجّع RoleDto
+            return !updated ? BadRequest("فشل نسخ الصلاحيات.") : Ok(new { message = "تم نسخ الصلاحيات بنجاح." });
         }
     }
 
-    public class CloneRoleDto { public int FromRoleId { get; set; } }
+    public class CloneRoleDto
+    {
+        public int FromRoleId { get; set; }
+    }
 }

@@ -70,14 +70,13 @@ namespace beaconta.Infrastructure.Data.Seed
                 if (!PERM_MAP.TryGetValue(item.ItemKey, out var keys) || keys is null || keys.Length == 0)
                     return;
 
-                // اربط فقط ما هو موجود فعلاً في DB.Permissions
-                var permIds = db.Permissions
-                                .Where(p => keys.Contains(p.Key))
-                                .Select(p => p.Id)
-                                .ToList();
-
-                foreach (var pid in permIds)
-                    item.MenuItemPermissions.Add(new MenuItemPermission { PermissionId = pid });
+                foreach (var key in keys)
+                {
+                    item.MenuItemPermissions.Add(new MenuItemPermission
+                    {
+                        PermissionKey = key   // 🔴 لازم تضيف حقل جديد اسمه PermissionKey بدل ما كنت تعتمد على جدول Permissions
+                    });
+                }
             }
 
             void AddItem(MenuGroup g, MenuItem it)

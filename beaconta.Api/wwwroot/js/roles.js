@@ -6,47 +6,38 @@ $(async function () {
     let snapshotPerms = [];
 
     // -------- Helpers ----------
-    const setSidebarCount = (n) => {
-        const $el = $("#sidebarRoleUsersCount");
-        if ($el.length) $el.text(`${n} مستخدم`);
-    };
-
-    const setModalCount = (n) => {
-        const $el = $("#modalRoleUsersCount");
-        if ($el.length) $el.text(n);
-    };
+    const setSidebarCount = (n) => $("#sidebarRoleUsersCount").text(`${n} مستخدم`);
+    const setModalCount = (n) => $("#modalRoleUsersCount").text(n);
 
     const normalizeRoles = (list) =>
         (list || []).map(r => ({
             ...r,
             usersCount: typeof r.usersCount === "number" ? r.usersCount : 0,
-            // ✅ استخدم permissionIds من السيرفر
             perms: Array.isArray(r.permissionIds) ? r.permissionIds : (r.perms || []),
             createdAt: r.createdAt ? new Date(r.createdAt) : null
         }));
 
-
     // -------- API loading ----------
     async function loadAll() {
         try {
-            const flatPermissions = await apiGet(API.base + "/Permissions");
+            const catalogData = await apiGet(API.base + "/menu/catalog");
             const rawRoles = await apiGet(API.roles);
             roles = normalizeRoles(rawRoles);
 
-            const grouped = {};
-            flatPermissions.forEach(p => {
-                const cat = p.category || "أخرى";
-                if (!grouped[cat]) grouped[cat] = { key: cat, name: cat, items: [] };
-                grouped[cat].items.push({
-                    id: p.id,       // ✅ خزن الـ id
-                    key: p.key,
-                    name: p.name
-                });
-            });
-
-            catalog = Object.values(grouped);
+            catalog = catalogData.map(sec => ({
+                key: sec.sectionKey,
+                name: sec.title,
+                items: sec.groups.flatMap(g =>
+                    g.items.map(i => ({
+                        id: i.itemKey,
+                        key: i.itemKey,
+                        name: i.title,
+                        category: sec.title + " / " + g.title
+                    }))
+                )
+            }));
         } catch (e) {
-            toastError("فشل تحميل البيانات");
+            Utils.toastError("فشل تحميل البيانات");
             console.error(e);
         }
     }
@@ -58,13 +49,13 @@ $(async function () {
 
         roles.forEach(r => {
             const item = $(`
-        <div class="role-item ${r.id === selectedRoleId ? "active" : ""}" data-id="${r.id}">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="fw-bold">${Utils.escapeHtml(r.name)}</div>
-            <span class="tag">${r.usersCount || 0} مستخدم</span>
-          </div>
-        </div>
-      `);
+              <div class="role-item ${r.id === selectedRoleId ? "active" : ""}" data-id="${r.id}">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="fw-bold">${Utils.escapeHtml(r.name)}</div>
+                  <span class="tag">${r.usersCount || 0} مستخدم</span>
+                </div>
+              </div>
+            `);
             item.on("click", () => selectRole(r.id));
             $list.append(item);
 
@@ -81,47 +72,56 @@ $(async function () {
             $select.val(selectedRoleId);
         }
     }
-    function collectCheckedIds() {
-        return $(".perm-item:checked").map((_, el) => Number($(el).data("id"))).get();
-    }
+
+    // -------- Collect checked permissions ----------
+     
+    // -------- Collect checked permissions ----------
+    const collectCheckedIds = () =>
+        $(".perm-item:checked")
+            .map((_, el) => el.dataset.id) // ✅ خليه string
+            .get()
+            .filter(id => id); // يتأكد مش فاضي
 
 
-
+    // -------- Build permissions panel ----------
     function buildPermPanel() {
         const $container = $("#permPanel").empty();
 
         catalog.forEach((cat, idx) => {
             const catId = `cat_${idx}`;
             const card = $(`
-        <div class="perm-cat">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="perm-title">${cat.name}</div>
-            <div class="d-flex align-items-center gap-2">
-              <div class="form-check m-0">
-                <input class="form-check-input parent-check" type="checkbox" data-cat="${cat.key}">
-                <label class="form-check-label small text-muted">تحديد الكل</label>
+              <div class="perm-cat">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="perm-title">${cat.name}</div>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="form-check m-0">
+                      <input class="form-check-input parent-check" type="checkbox" data-cat="${cat.key}">
+                      <label class="form-check-label small text-muted">تحديد الكل</label>
+                    </div>
+                    <button class="btn btn-sm btn-light border toggleCat">
+                      <i class="bi bi-caret-down-fill"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="perm-grid mt-2" id="${catId}">
+                  ${cat.items.map(i => `
+                    <div class="form-check">
+                      <input class="form-check-input perm-item" type="checkbox"
+                             value="${i.id}" data-id="${i.id}" data-key="${i.key}" data-cat="${cat.key}">
+                      <label class="form-check-label">${i.name}</label>
+                    </div>
+                  `).join("")}
+                </div>
               </div>
-              <button class="btn btn-sm btn-light border toggleCat"><i class="bi bi-caret-down-fill"></i></button>
-            </div>
-          </div>
-          <div class="perm-grid mt-2" id="${catId}">
-            ${cat.items.map(i => `
-              <div class="form-check">
-               <input class="form-check-input perm-item" type="checkbox"
-       data-id="${i.id}" data-key="${i.key}" data-cat="${cat.key}">
-<label class="form-check-label">${i.name}</label>
+            `);
 
-              </div>
-            `).join("")}
-          </div>
-        </div>
-      `);
-
+            // check/uncheck all in this category
             card.find(".parent-check").on("change", function () {
                 const on = $(this).is(":checked");
                 card.find(".perm-item").prop("checked", on).trigger("change", { bubble: false });
             });
 
+            // toggle collapse
             card.find(".toggleCat").on("click", function () {
                 $("#" + catId).slideToggle(120);
                 $(this).find("i").toggleClass("bi-caret-down-fill bi-caret-up-fill");
@@ -130,7 +130,7 @@ $(async function () {
             $container.append(card);
         });
 
-        // بحث
+        // search
         $("#permSearch").off("input").on("input", Utils.debounce(function () {
             const q = this.value.trim();
             $(".perm-cat").show();
@@ -146,7 +146,7 @@ $(async function () {
         }, 200));
     }
 
-    // -------- UI behaviors ----------
+    // -------- Select Role ----------
     function selectRole(id) {
         selectedRoleId = id;
 
@@ -158,21 +158,21 @@ $(async function () {
 
         $(".perm-item").prop("checked", false).trigger("change", { bubble: false });
 
-        // ✅ حط الـ checkboxes حسب الـ id مش الـ key
+         
+
         (role.perms || []).forEach(pid => {
-            $(`.perm-item[data-id="${pid}"]`).prop("checked", true).trigger("change", { bubble: false });
+            $(`.perm-item[data-id="${pid}"]`)
+                .prop("checked", true)
+                .trigger("change", { bubble: false });
         });
+
+
 
         snapshotPerms = [...(role.perms || [])];
         $("#lastEdited").text(Utils.fmtDate(new Date()));
     }
 
-
-
-    function collectChecked() {
-        return $(".perm-item:checked").map((_, el) => $(el).data("key")).get();
-    }
-
+    // -------- Save Role ----------
     async function saveRole(btn) {
         const ids = collectCheckedIds();
         Forms.setBtnLoading(btn, true);
@@ -180,30 +180,28 @@ $(async function () {
             const updatedRole = await apiPut(`${API.roles}/${selectedRoleId}/permissions`, { permissionIds: ids });
 
             const role = roles.find(r => r.id === selectedRoleId);
-            if (role && updatedRole && updatedRole.permissionIds) {
+            if (role && updatedRole?.permissionIds) {
                 role.perms = [...updatedRole.permissionIds];
                 snapshotPerms = [...updatedRole.permissionIds];
             }
 
-            // ✅ خلي الرسالة تظهر دائمًا عند نجاح العملية
             Utils.toastSuccess("تم الحفظ بنجاح");
-
         } catch (e) {
-            if (typeof handleApiError === "function") handleApiError(e);
-            else console.error(e);
+            handleApiError?.(e);
+            console.error(e);
         } finally {
             Forms.setBtnLoading(btn, false, '<i class="bi bi-save2 me-1"></i>حفظ التغييرات');
         }
     }
 
-
+    // -------- Init Roles Table ----------
     function initRolesTable() {
         DTable.build("#rolesTable", {
             data: roles.map((r, i) => [
                 i + 1,
                 r.name,
                 r.usersCount || 0,
-                (r.permissionIds || []).length,
+                (r.perms || []).length,
                 r.createdAt ? Utils.fmtDate(r.createdAt) : "-"
             ]),
             columns: [
@@ -216,7 +214,7 @@ $(async function () {
         });
     }
 
-
+    // -------- Bind Events ----------
     function bindEvents() {
         $("#expandAll").on("click", () => $(".perm-grid").slideDown(120));
         $("#collapseAll").on("click", () => $(".perm-grid").slideUp(120));
@@ -238,10 +236,7 @@ $(async function () {
                 renderRolesList();
                 selectRole(role.id);
                 bootstrap.Modal.getInstance(document.getElementById("newRoleModal")).hide();
-            } catch (e) {
-                if (typeof handleApiError === "function") handleApiError(e);
-                else console.error(e);
-            }
+            } catch (e) { handleApiError?.(e); }
         });
 
         // نسخ صلاحيات
@@ -256,15 +251,11 @@ $(async function () {
 
             try {
                 const updated = await apiPost(`${API.roles}/${selectedRoleId}/clone`, { fromRoleId });
-
-                // ✅ حدّث الكاش المحلي مباشرة
                 const dest = roles.find(r => r.id === selectedRoleId);
-                if (dest && updated) {
-                    dest.permissionIds = updated.permissionIds || [];
-                    dest.perms = [...dest.permissionIds];
+                if (dest && updated?.permissionIds) {
+                    dest.perms = [...updated.permissionIds];
                 }
-
-                selectRole(selectedRoleId); // أعِد رسم الـ checkboxes
+                selectRole(selectedRoleId);
                 bootstrap.Modal.getInstance(document.getElementById("cloneRoleModal")).hide();
                 Utils.toastSuccess("تم نسخ الصلاحيات بنجاح");
             } catch (e) {
@@ -272,7 +263,6 @@ $(async function () {
                 console.error(e);
             }
         });
-
 
         // إعادة تسمية
         $("#renameRole").on("click", async () => {
@@ -284,60 +274,35 @@ $(async function () {
                 inputValue: r.name,
                 showCancelButton: true
             });
-
             if (res.isConfirmed && res.value?.trim()) {
                 try {
                     const updated = await apiPut(API.roles + "/" + r.id, { name: res.value.trim() });
-
-                    // ✅ حدث الكاش مباشرة
                     r.name = updated.name;
                     renderRolesList();
                     selectRole(r.id);
-
                     Utils.toastSuccess("تمت إعادة التسمية بنجاح");
-                } catch (e) {
-                    Utils.toastError("فشل في إعادة التسمية");
-                    console.error(e);
-                }
+                } catch (e) { Utils.toastError("فشل في إعادة التسمية"); }
             }
         });
-
 
         // حذف
         $("#deleteRole").on("click", async () => {
             const r = roles.find(x => x.id === selectedRoleId);
             if (!r) return;
-
             if (r.usersCount > 0) {
-                return Swal.fire({
-                    icon: "info",
-                    text: "لا يمكن الحذف والمجموعة مرتبطة بمستخدمين"
-                });
+                return Swal.fire({ icon: "info", text: "لا يمكن الحذف والمجموعة مرتبطة بمستخدمين" });
             }
-
             const ok = await Utils.confirmDelete("هل تريد حذف هذه المجموعة؟");
             if (ok.isConfirmed) {
                 try {
-                    const res = await apiDelete(API.roles + "/" + r.id);
-
-                    // تحديث الكاش المحلي
+                    await apiDelete(API.roles + "/" + r.id);
                     roles = roles.filter(x => x.id !== r.id);
                     renderRolesList();
-
-                    if (roles[0]) {
-                        selectRole(roles[0].id);
-                    }
-
-                    Utils.toastSuccess(res.message || "تم حذف المجموعة بنجاح");
+                    if (roles[0]) selectRole(roles[0].id);
+                    Utils.toastSuccess("تم حذف المجموعة بنجاح");
                 } catch (e) {
-                    if (typeof handleApiError === "function") {
-                        handleApiError(e);
-                    } else {
-                        console.error(e);
-                    }
-
-                    const msg = e.responseJSON?.message || "فشل حذف المجموعة";
-                    Utils.toastError(msg);
+                    handleApiError?.(e);
+                    Utils.toastError("فشل حذف المجموعة");
                 }
             }
         });
@@ -360,37 +325,33 @@ $(async function () {
                 const $tbody = $("#roleUsersTable tbody").empty();
                 if (!users.length) {
                     $tbody.append(`
-            <tr>
-              <td colspan="7" class="text-center text-muted py-4">
-                <i class="bi bi-info-circle me-2"></i> لا يوجد مستخدمون في هذه المجموعة
-              </td>
-            </tr>
-          `);
+                      <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                          <i class="bi bi-info-circle me-2"></i> لا يوجد مستخدمون في هذه المجموعة
+                        </td>
+                      </tr>
+                    `);
                 } else {
                     users.forEach((u, idx) => {
                         $tbody.append(`
-              <tr>
-                <td>${idx + 1}</td>
-                <td><i class="bi bi-person-circle me-2 text-primary"></i>${Utils.escapeHtml(u.username)}</td>
-                <td>${Utils.escapeHtml(u.fullName || "-")}</td>
-                <td>${Utils.escapeHtml(u.email || "-")}</td>
-                <td>${Utils.escapeHtml(u.phone || "-")}</td>
-                <td>${u.lastLogin ? Utils.fmtDate(u.lastLogin) : "-"}</td>
-                <td>
-                  <span class="badge ${String(u.status).toLowerCase() === "active" ? "bg-success" : "bg-danger"}">
-                    ${String(u.status).toLowerCase() === "active" ? "نشط" : "موقوف"}
-                  </span>
-                </td>
-              </tr>
-            `);
+                          <tr>
+                            <td>${idx + 1}</td>
+                            <td><i class="bi bi-person-circle me-2 text-primary"></i>${Utils.escapeHtml(u.username)}</td>
+                            <td>${Utils.escapeHtml(u.fullName || "-")}</td>
+                            <td>${Utils.escapeHtml(u.email || "-")}</td>
+                            <td>${Utils.escapeHtml(u.phone || "-")}</td>
+                            <td>${u.lastLogin ? Utils.fmtDate(u.lastLogin) : "-"}</td>
+                            <td>
+                              <span class="badge ${String(u.status).toLowerCase() === "active" ? "bg-success" : "bg-danger"}">
+                                ${String(u.status).toLowerCase() === "active" ? "نشط" : "موقوف"}
+                              </span>
+                            </td>
+                          </tr>
+                        `);
                     });
                 }
-
                 new bootstrap.Modal("#roleUsersModal").show();
-            } catch (e) {
-                if (typeof handleApiError === "function") handleApiError(e);
-                else console.error(e);
-            }
+            } catch (e) { handleApiError?.(e); }
         });
     }
 

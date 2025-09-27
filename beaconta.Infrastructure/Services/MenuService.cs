@@ -21,10 +21,10 @@ namespace beaconta.Infrastructure.Services
             _cache = cache;
         }
 
+        // ✅ المفلترة حسب المستخدم
         public async Task<IReadOnlyList<MenuSectionDto>> GetMenuForCurrentUserAsync(CancellationToken ct = default)
         {
             var userIdStr = _current.UserId ?? throw new InvalidOperationException("No current user.");
-
             if (!int.TryParse(userIdStr, out var userId))
                 throw new InvalidOperationException($"Invalid UserId format: {userIdStr}");
 
@@ -47,10 +47,20 @@ namespace beaconta.Infrastructure.Services
             return filtered;
         }
 
+        // ✅ الكاتالوج الكامل (لإدارة المجموعات)
+        public async Task<IReadOnlyList<MenuSectionDto>> GetMenuCatalogAsync(CancellationToken ct = default)
+        {
+            var full = await _repo.LoadFullMenuAsync(ct);
+            return full
+                .Select(s => s.ToDto())
+                .OrderBy(s => s.SortOrder)
+                .ToList()
+                .AsReadOnly();
+        }
+
         public Task InvalidateCacheForUserAsync(int userId)
         {
-            // الكاش معتمد على بصمة الصلاحيات. تغيير الصلاحيات يغيّر المفتاح تلقائياً.
-            return Task.CompletedTask;
+            return Task.CompletedTask; // الكاش مبني على بصمة الصلاحيات
         }
 
         private static IEnumerable<MenuSection> Filter(IEnumerable<MenuSection> all, HashSet<string> userPerms)
@@ -87,9 +97,10 @@ namespace beaconta.Infrastructure.Services
                     foreach (var it in g.Items)
                     {
                         var requiredKeys = it.MenuItemPermissions
-                                           .Select(p => p.Permission.Key)
+                                           .Select(p => p.PermissionKey)
                                            .Where(k => !string.IsNullOrWhiteSpace(k))
                                            .ToList();
+
 
                         var allowed = it.MatchMode == PermissionMatchMode.RequireAll
                                       ? requiredKeys.All(userPerms.Contains)
