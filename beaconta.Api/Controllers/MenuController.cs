@@ -29,5 +29,15 @@ namespace beaconta.Api.Controllers
             var data = await _menu.GetMenuCatalogAsync(ct);
             return Ok(data);
         }
+
+        [HttpPost("invalidate/{userId:int}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> Invalidate(int userId)
+        {
+            await _menu.InvalidateCacheForUserAsync(userId);
+            return Ok(new { message = "Cache cleared" });
+        }
+
+
     }
 }
