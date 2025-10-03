@@ -1,9 +1,45 @@
 ﻿// =========================
-// Users screen logic (SoC)
+// Users screen logic (RBAC)
 // =========================
-$(function () {
+$(async function () {
+    // ---- صلاحيات شاشة إدارة المستخدمين ----
+    const PERMS = {
+        view: 'user-management.view',
+        search: 'user-management.search',
+        create: 'user-management.create',
+        update: 'user-management.update',
+        delete: 'user-management.delete',
+        resetPassword: 'user-management.resetPassword',
+        assignRoles: 'user-management.assignRoles',
+        toggleStatus: 'user-management.toggleStatus',
+        importCsv: 'user-management.importCsv'
+    };
+
+    // حمّل صلاحيات المستخدم إن توفرت وحدة Authorize
+    if (window.Authorize && typeof Authorize.load === 'function') {
+        try { await Authorize.load(); }
+        catch (e) { console.error('Failed to load permissions', e); }
+    } else {
+        console.warn('Authorize module not found — skipping UI filtering.');
+    }
+
     let dt, users = [], roles = [];
     const rolesMap = new Map();
+
+    // ---------- Helpers ----------
+    function ensurePerm(key) {
+        if (!(window.Authorize && typeof Authorize.has === 'function')) return true; // لا تنكسر لو الوحدة غايبة
+        if (!Authorize.has(key)) {
+            Utils.toastError('ليست لديك صلاحية لتنفيذ هذا الإجراء.');
+            return false;
+        }
+        return true;
+    }
+    function applyAuth(root = document) {
+        if (window.Authorize && typeof Authorize.applyWithin === 'function') {
+            Authorize.applyWithin(root);
+        }
+    }
 
     // ---------- Load Roles ----------
     function loadAllRoles() {
@@ -62,17 +98,59 @@ $(function () {
                 { data: "lastLogin", render: Utils.fmtDate },
                 {
                     data: null, orderable: false, className: "text-nowrap",
-                    render: (row) => `
+                    render: (row) => {
+                        const isActive = String(row.status).toLowerCase() === 'active';
+                        return `
                         <div class="btn-group btn-group-sm">
-                          <button class="btn btn-outline-primary" onclick="openDetails(${row.id})" title="تفاصيل"><i class="bi bi-card-text"></i></button>
-                          <button class="btn btn-outline-warning" onclick="editUser(${row.id})" title="تعديل"><i class="bi bi-pencil"></i></button>
-                          <button class="btn btn-outline-secondary" onclick="resetPassword(${row.id})" title="إعادة كلمة المرور"><i class="bi bi-key"></i></button>
-                          <button class="btn btn-outline-${row.status === 'active' ? 'warning' : 'success'}" onclick="toggleStatus(${row.id})" title="${row.status === 'active' ? 'تعطيل' : 'تفعيل'}"><i class="bi bi-toggle2-${row.status === 'active' ? 'off' : 'on'}"></i></button>
-                          <button class="btn btn-outline-danger" onclick="deleteUser(${row.id})" title="حذف"><i class="bi bi-trash3"></i></button>
-                        </div>`
+                          <button class="btn btn-outline-primary"
+                                  data-action="details"
+                                  data-perm="${PERMS.view}"
+                                  onclick="openDetails(${row.id})"
+                                  title="تفاصيل">
+                            <i class="bi bi-card-text"></i>
+                          </button>
+
+                          <button class="btn btn-outline-warning"
+                                  data-action="edit"
+                                  data-perm="${PERMS.update}"
+                                  onclick="editUser(${row.id})"
+                                  title="تعديل">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+
+                          <button class="btn btn-outline-secondary"
+                                  data-action="reset"
+                                  data-perm="${PERMS.resetPassword}"
+                                  onclick="resetPassword(${row.id})"
+                                  title="إعادة كلمة المرور">
+                            <i class="bi bi-key"></i>
+                          </button>
+
+                          <button class="btn btn-outline-${isActive ? 'warning' : 'success'}"
+                                  data-action="toggle"
+                                  data-perm="${PERMS.toggleStatus}"
+                                  onclick="toggleStatus(${row.id})"
+                                  title="${isActive ? 'تعطيل' : 'تفعيل'}">
+                            <i class="bi bi-toggle2-${isActive ? 'off' : 'on'}"></i>
+                          </button>
+
+                          <button class="btn btn-outline-danger"
+                                  data-action="delete"
+                                  data-perm="${PERMS.delete}"
+                                  onclick="deleteUser(${row.id})"
+                                  title="حذف">
+                            <i class="bi bi-trash3"></i>
+                          </button>
+                        </div>`;
+                    }
                 }
             ],
             order: [[1, "asc"]]
+        });
+
+        // طبّق التفويض على الجدول عند كل draw
+        dt.on('draw', function () {
+            applyAuth(document.getElementById('tblUsers'));
         });
 
         // Filters
@@ -97,7 +175,11 @@ $(function () {
             const selected = $(".row-check:checked").length;
             $("#bulkCount").text(selected);
             $("#bulkToolbar").toggleClass("bulk-toolbar", selected === 0);
+            applyAuth(document.getElementById('bulkToolbar'));
         });
+
+        // تطبيق التفويض على كامل الصفحة بعد البناء الأول
+        applyAuth(document);
     }
 
     function reloadTable() {
@@ -113,20 +195,25 @@ $(function () {
         return {
             ...u,
             roles: Array.isArray(u.roles) ? u.roles : [],
-            roleIds: Array.isArray(u.roleIds) ? u.roleIds : []   // ⬅️ مهم
+            roleIds: Array.isArray(u.roleIds) ? u.roleIds : []
         };
     }
-
 
     function loadUsers() {
         return apiGet(API.users).then(data => {
             users = (data || []).map(normalizeUser);
-            if (dt) reloadTable(); else { buildTable(); Utils.updateStats(users); }
+            if (dt) {
+                reloadTable();
+            } else {
+                buildTable();
+                Utils.updateStats(users);
+            }
         }).catch(Utils.handleApiError);
     }
 
     // ---------- Details ----------
     window.openDetails = function (id) {
+        if (!ensurePerm(PERMS.view)) return;
         const u = users.find(x => x.id === id);
         if (!u) return;
         const html = `
@@ -151,30 +238,39 @@ $(function () {
           </div>
           <hr>
           <div class="d-flex gap-2">
-            <button class="btn btn-warning" onclick="editUser(${u.id})"><i class="bi bi-pencil me-1"></i>تعديل</button>
-            <button class="btn btn-secondary" onclick="resetPassword(${u.id})"><i class="bi bi-key me-1"></i>إعادة كلمة المرور</button>
-            <button class="btn btn-${u.status === 'active' ? 'outline-warning' : 'outline-success'}" onclick="toggleStatus(${u.id})">
+            <button class="btn btn-warning" data-perm="${PERMS.update}" onclick="editUser(${u.id})"><i class="bi bi-pencil me-1"></i>تعديل</button>
+            <button class="btn btn-secondary" data-perm="${PERMS.resetPassword}" onclick="resetPassword(${u.id})"><i class="bi bi-key me-1"></i>إعادة كلمة المرور</button>
+            <button class="btn btn-${u.status === 'active' ? 'outline-warning' : 'outline-success'}"
+                    data-perm="${PERMS.toggleStatus}"
+                    onclick="toggleStatus(${u.id})">
               <i class="bi bi-toggle2-${u.status === 'active' ? 'off' : 'on'} me-1"></i>${u.status === 'active' ? 'تعطيل' : 'تفعيل'}
             </button>
           </div>`;
         $("#userProfile").html(html);
+        applyAuth(document.getElementById('userDetails'));
         new bootstrap.Offcanvas('#userDetails').show();
     };
 
     // ---------- Add / Edit ----------
-    $("#btnAddUser").on("click", function () {
-        $("#userModalTitle").text("إضافة مستخدم");
-        $("#frmUser")[0].reset();
-        $("#userId").val("");
-        $("#password,#password2").val("");
-        $("#forceReset").prop("checked", false);
-        loadAllRoles().then(() => {
-            $("#roles").val([]).trigger('change');
-            new bootstrap.Modal('#userModal').show();
+    $("#btnAddUser")
+        .attr('data-perm', PERMS.create)
+        .on("click", function () {
+            if (!ensurePerm(PERMS.create)) return;
+            $("#userModalTitle").text("إضافة مستخدم");
+            $("#frmUser")[0].reset();
+            $("#userId").val("");
+            $("#password,#password2").val("");
+            $("#forceReset").prop("checked", false);
+            loadAllRoles().then(() => {
+                $("#roles").val([]).trigger('change');
+                const modalEl = document.getElementById('userModal');
+                new bootstrap.Modal(modalEl).show();
+                applyAuth(modalEl);
+            });
         });
-    });
 
     window.editUser = function (id) {
+        if (!ensurePerm(PERMS.update)) return;
         const u = users.find(x => x.id === id);
         if (!u) return;
         $("#userModalTitle").text("تعديل مستخدم");
@@ -189,12 +285,20 @@ $(function () {
         $("#forceReset").prop("checked", false);
         loadAllRoles().then(() => {
             $("#roles").val(u.roleIds || []).trigger('change');
-
-            new bootstrap.Modal('#userModal').show();
+            const modalEl = document.getElementById('userModal');
+            new bootstrap.Modal(modalEl).show();
+            applyAuth(modalEl);
         });
     };
 
     $("#btnSaveUser").on("click", function () {
+        const isEdit = !!Number($('#userId').val() || 0);
+        if (isEdit) {
+            if (!ensurePerm(PERMS.update)) return;
+        } else {
+            if (!ensurePerm(PERMS.create)) return;
+        }
+
         const form = document.getElementById('frmUser');
         const p1 = $('#password').val() || '';
         const p2 = $('#password2').val() || '';
@@ -219,7 +323,6 @@ $(function () {
             roleIds: ($('#roles').val() || []).map(Number)
         };
 
-        const isEdit = !!dto.id;
         const req = isEdit ? apiPut(`${API.users}/${dto.id}`, dto) : apiPost(API.users, dto);
         req.then(() => {
             bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
@@ -229,11 +332,14 @@ $(function () {
     });
 
     // ---------- Single actions ----------
-    window.toggleStatus = id =>
+    window.toggleStatus = id => {
+        if (!ensurePerm(PERMS.toggleStatus)) return;
         $.post({ url: `${API.users}/${id}/toggle-status`, headers: { Authorization: "Bearer " + getToken() } })
             .then(loadUsers).catch(Utils.handleApiError);
+    };
 
     window.deleteUser = id => {
+        if (!ensurePerm(PERMS.delete)) return;
         Utils.confirmDelete('هل تريد حذف المستخدم؟').then(r => {
             if (!r.isConfirmed) return;
             apiDelete(`${API.users}/${id}`)
@@ -243,6 +349,7 @@ $(function () {
     };
 
     window.resetPassword = id => {
+        if (!ensurePerm(PERMS.resetPassword)) return;
         const u = users.find(x => x.id === id);
         if (!u) return;
         Swal.fire({
@@ -266,6 +373,33 @@ $(function () {
         });
     };
 
+    // ---------- Bulk toolbar ----------
+    $('#bulkActivate').attr('data-perm', PERMS.toggleStatus).on('click', function () {
+        if (!ensurePerm(PERMS.toggleStatus)) return;
+        // TODO: تفعيل جماعي
+    });
+    $('#bulkDeactivate').attr('data-perm', PERMS.toggleStatus).on('click', function () {
+        if (!ensurePerm(PERMS.toggleStatus)) return;
+        // TODO: تعطيل جماعي
+    });
+    $('#bulkDelete').attr('data-perm', PERMS.delete).on('click', function () {
+        if (!ensurePerm(PERMS.delete)) return;
+        // TODO: حذف جماعي
+    });
+    $('#bulkRole').attr('data-perm', PERMS.assignRoles).on('click', function () {
+        if (!ensurePerm(PERMS.assignRoles)) return;
+        new bootstrap.Modal('#bulkRoleModal').show();
+        applyAuth(document.getElementById('bulkRoleModal'));
+    });
+
+    // زر الاستيراد (إن موجود)
+    $('#btnImport').attr('data-perm', PERMS.importCsv).on('click', function () {
+        if (!ensurePerm(PERMS.importCsv)) return;
+        new bootstrap.Modal('#importModal').show();
+        applyAuth(document.getElementById('importModal'));
+    });
+
     // ---------- Init ----------
+    applyAuth(document);          // إخفِ الأزرار غير المصرح بها مباشرة
     loadAllRoles().then(loadUsers);
 });

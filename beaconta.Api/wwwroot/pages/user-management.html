@@ -15,7 +15,6 @@
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
-
     <link href="/css/site.css" rel="stylesheet" />
 </head>
 <body class="p-3 p-md-4">
@@ -28,8 +27,14 @@
                 <div class="text-muted small">إضافة وتعديل المستخدمين، تعيين الأدوار، وإدارة حالة الحسابات</div>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary" id="btnImport"><i class="bi bi-upload me-1"></i>استيراد CSV</button>
-                <button class="btn btn-primary" id="btnAddUser"><i class="bi bi-plus-circle me-1"></i>مستخدم جديد</button>
+                <button class="btn btn-outline-secondary" id="btnImport"
+                        data-perm="user-management.importCsv">
+                    <i class="bi bi-upload me-1"></i>استيراد CSV
+                </button>
+                <button class="btn btn-primary" id="btnAddUser"
+                        data-perm="user-management.create">
+                    <i class="bi bi-plus-circle me-1"></i>مستخدم جديد
+                </button>
             </div>
         </div>
     </div>
@@ -92,10 +97,22 @@
                 <div class="d-flex justify-content-between">
                     <div class="fw-bold"><span id="bulkCount">0</span> محدد</div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-success btn-sm" id="bulkActivate"><i class="bi bi-toggle-on me-1"></i>تفعيل</button>
-                        <button class="btn btn-outline-warning btn-sm" id="bulkDeactivate"><i class="bi bi-toggle-off me-1"></i>تعطيل</button>
-                        <button class="btn btn-outline-danger btn-sm" id="bulkDelete"><i class="bi bi-trash me-1"></i>حذف</button>
-                        <button class="btn btn-outline-secondary btn-sm" id="bulkRole"><i class="bi bi-person-gear me-1"></i>تعيين دور</button>
+                        <button class="btn btn-outline-success btn-sm" id="bulkActivate"
+                                data-perm="user-management.toggleStatus">
+                            <i class="bi bi-toggle-on me-1"></i>تفعيل
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" id="bulkDeactivate"
+                                data-perm="user-management.toggleStatus">
+                            <i class="bi bi-toggle-off me-1"></i>تعطيل
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" id="bulkDelete"
+                                data-perm="user-management.delete">
+                            <i class="bi bi-trash me-1"></i>حذف
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" id="bulkRole"
+                                data-perm="user-management.assignRoles">
+                            <i class="bi bi-person-gear me-1"></i>تعيين دور
+                        </button>
                     </div>
                 </div>
             </div>
@@ -261,16 +278,27 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
 
     <!-- Shared JS -->
-    <!-- Shared -->
     <script src="/js/loader.js"></script>
-    <script src="/js/auth.js"></script> <!-- ⬅️ ضيف هذا -->
+    <script src="/js/auth.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/utils.js"></script>
     <script src="/js/datatable.js"></script>
     <script src="/js/forms.js"></script>
 
+    <!-- وحدة التفويض (يجب أن تكون قبل users.js) -->
+    <script src="/js/authorize.js"></script>
+
     <!-- Screen logic -->
     <script src="/js/users.js"></script>
 
+    <!-- (اختياري) ترقيعة لمنع خطأ browserLink مع $.noConflict أثناء التطوير -->
+    <!--
+    <script>
+      if (window.jQuery && !window.$) window.$ = window.jQuery;
+      if (window.$ && typeof $.noConflict !== 'function') {
+        $.noConflict = function () { return window.$; };
+      }
+    </script>
+    -->
 </body>
 </html>

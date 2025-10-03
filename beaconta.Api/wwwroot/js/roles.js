@@ -24,6 +24,7 @@ $(async function () {
             const rawRoles = await apiGet(API.roles);
             roles = normalizeRoles(rawRoles);
 
+            // ✅ حمّل الأفعال الديناميكية من الـ catalog
             catalog = catalogData.map(sec => ({
                 key: sec.sectionKey,
                 name: sec.title,
@@ -32,7 +33,13 @@ $(async function () {
                         id: i.itemKey,
                         key: i.itemKey,
                         name: i.title,
-                        category: sec.title + " / " + g.title
+                        category: sec.title + " / " + g.title,
+                        // actions: { actionKey, title, permissionKey }
+                        actions: Array.isArray(i.actions) ? i.actions.map(a => ({
+                            actionKey: a.actionKey,
+                            title: a.title,
+                            perm: a.permissionKey
+                        })) : []
                     }))
                 )
             }));
@@ -74,21 +81,19 @@ $(async function () {
     }
 
     // -------- Collect checked permissions ----------
-     
-    // -------- Collect checked permissions ----------
     const collectCheckedIds = () =>
         $(".perm-item:checked")
-            .map((_, el) => el.dataset.id) // ✅ خليه string
+            .map((_, el) => el.dataset.id) // ✅ مفاتيح نصّية (permissionKey)
             .get()
-            .filter(id => id); // يتأكد مش فاضي
+            .filter(id => id);
 
-
-    // -------- Build permissions panel ----------
+    // -------- Build permissions panel (with dynamic actions) ----------
     function buildPermPanel() {
         const $container = $("#permPanel").empty();
 
         catalog.forEach((cat, idx) => {
             const catId = `cat_${idx}`;
+
             const card = $(`
               <div class="perm-cat">
                 <div class="d-flex align-items-center justify-content-between">
@@ -98,30 +103,62 @@ $(async function () {
                       <input class="form-check-input parent-check" type="checkbox" data-cat="${cat.key}">
                       <label class="form-check-label small text-muted">تحديد الكل</label>
                     </div>
-                    <button class="btn btn-sm btn-light border toggleCat">
+                    <button class="btn btn-sm btn-light border toggleCat" type="button">
                       <i class="bi bi-caret-down-fill"></i>
                     </button>
                   </div>
                 </div>
                 <div class="perm-grid mt-2" id="${catId}">
                   ${cat.items.map(i => `
-                    <div class="form-check">
-                      <input class="form-check-input perm-item" type="checkbox"
-                             value="${i.id}" data-id="${i.id}" data-key="${i.key}" data-cat="${cat.key}">
-                      <label class="form-check-label">${i.name}</label>
+                    <div class="border rounded-3 p-2">
+                      <div class="d-flex align-items-center justify-content-between mb-1">
+                        <label class="fw-bold mb-0">${i.name}</label>
+                        <div class="form-check m-0">
+                          <input class="form-check-input item-check" type="checkbox" data-item="${i.key}">
+                          <label class="form-check-label small text-muted">الكل</label>
+                        </div>
+                      </div>
+                      <div class="d-flex flex-wrap gap-3">
+                        ${i.actions?.length
+                    ? i.actions.map(a => `
+                                <div class="form-check">
+                                  <input class="form-check-input perm-item"
+                                         type="checkbox"
+                                         value="${a.perm}"
+                                         data-id="${a.perm}"
+                                         data-action="${a.actionKey}"
+                                         data-key="${i.key}"
+                                         data-cat="${cat.key}">
+                                  <label class="form-check-label">
+                                    ${Utils.escapeHtml(a.title || a.actionKey)}
+                                    <span class="text-muted small">(${Utils.escapeHtml(a.actionKey)})</span>
+                                  </label>
+                                </div>
+                              `).join("")
+                    : `<div class="text-muted small">لا توجد أفعال معرفة لهذه الشاشة</div>`
+                }
+                      </div>
                     </div>
                   `).join("")}
                 </div>
               </div>
             `);
 
-            // check/uncheck all in this category
+            // تحديد/إلغاء تحديد كل أفعال الفئة
             card.find(".parent-check").on("change", function () {
                 const on = $(this).is(":checked");
                 card.find(".perm-item").prop("checked", on).trigger("change", { bubble: false });
+                card.find(".item-check").prop("checked", on);
             });
 
-            // toggle collapse
+            // تحديد/إلغاء تحديد كل أفعال شاشة واحدة (item)
+            card.find(".item-check").on("change", function () {
+                const on = $(this).is(":checked");
+                const itemKey = $(this).data("item");
+                card.find(`.perm-item[data-key="${itemKey}"]`).prop("checked", on).trigger("change", { bubble: false });
+            });
+
+            // طي/توسيع
             card.find(".toggleCat").on("click", function () {
                 $("#" + catId).slideToggle(120);
                 $(this).find("i").toggleClass("bi-caret-down-fill bi-caret-up-fill");
@@ -130,18 +167,18 @@ $(async function () {
             $container.append(card);
         });
 
-        // search
+        // البحث
         $("#permSearch").off("input").on("input", Utils.debounce(function () {
             const q = this.value.trim();
             $(".perm-cat").show();
-            if (!q) { $(".perm-grid .form-check").show(); return; }
+            if (!q) { $(".perm-grid .border.p-2").show(); return; }
 
-            $(".perm-grid .form-check").each(function () {
+            $(".perm-grid .border.p-2").each(function () {
                 const match = $(this).text().includes(q);
                 $(this).toggle(match);
             });
             $(".perm-cat").each(function () {
-                $(this).toggle($(this).find(".form-check:visible").length > 0);
+                $(this).toggle($(this).find(".border.p-2:visible").length > 0);
             });
         }, 200));
     }
@@ -156,17 +193,16 @@ $(async function () {
         const role = roles.find(r => r.id === id) || {};
         setSidebarCount(role.usersCount || 0);
 
+        // نظّف الاختيارات الحالية
         $(".perm-item").prop("checked", false).trigger("change", { bubble: false });
+        $(".item-check, .parent-check").prop("checked", false);
 
-         
-
-        (role.perms || []).forEach(pid => {
-            $(`.perm-item[data-id="${pid}"]`)
+        // فعّل الصلاحيات الخاصة بالدور (مفاتيح نصّية)
+        (role.perms || []).forEach(permKey => {
+            $(`.perm-item[data-id="${CSS.escape(permKey)}"]`)
                 .prop("checked", true)
                 .trigger("change", { bubble: false });
         });
-
-
 
         snapshotPerms = [...(role.perms || [])];
         $("#lastEdited").text(Utils.fmtDate(new Date()));
@@ -174,7 +210,7 @@ $(async function () {
 
     // -------- Save Role ----------
     async function saveRole(btn) {
-        const ids = collectCheckedIds();
+        const ids = collectCheckedIds(); // مفاتيح نصّية (module.action)
         Forms.setBtnLoading(btn, true);
         try {
             const updatedRole = await apiPut(`${API.roles}/${selectedRoleId}/permissions`, { permissionIds: ids });
@@ -219,7 +255,10 @@ $(async function () {
         $("#expandAll").on("click", () => $(".perm-grid").slideDown(120));
         $("#collapseAll").on("click", () => $(".perm-grid").slideUp(120));
         $("#selectAll").on("click", () => $(".perm-item").prop("checked", true).trigger("change"));
-        $("#clearAll").on("click", () => $(".perm-item").prop("checked", false).trigger("change"));
+        $("#clearAll").on("click", () => {
+            $(".perm-item").prop("checked", false).trigger("change");
+            $(".item-check, .parent-check").prop("checked", false);
+        });
 
         $("#btnSave").on("click", function () { saveRole(this); });
         $("#btnRevert").on("click", () => selectRole(selectedRoleId));

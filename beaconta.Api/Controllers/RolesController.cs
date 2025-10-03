@@ -7,6 +7,8 @@ namespace beaconta.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // ملاحظة: يمكن استبدال هذا بـ سياسات أدق (اختياري)
+    // [Authorize(Policy = "roles.manage")]
     [Authorize(Roles = "admin")]
     public class RolesController : ControllerBase
     {
@@ -14,10 +16,12 @@ namespace beaconta.Api.Controllers
         public RolesController(IRoleService service) => _service = service;
 
         [HttpGet]
+        // [Authorize(Policy = "roles.view")]
         public async Task<IActionResult> GetAll()
             => Ok(await _service.GetAllAsync());
 
         [HttpGet("{id:int}")]
+        // [Authorize(Policy = "roles.view")]
         public async Task<IActionResult> GetById(int id)
         {
             var role = await _service.GetByIdAsync(id);
@@ -25,6 +29,7 @@ namespace beaconta.Api.Controllers
         }
 
         [HttpPost]
+        // [Authorize(Policy = "roles.create")]
         public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto?.Name))
@@ -35,6 +40,7 @@ namespace beaconta.Api.Controllers
         }
 
         [HttpPut("{id:int}")]
+        // [Authorize(Policy = "roles.update")]
         public async Task<IActionResult> UpdateName(int id, [FromBody] UpdateRoleDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto?.Name))
@@ -47,6 +53,7 @@ namespace beaconta.Api.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        // [Authorize(Policy = "roles.delete")]
         public async Task<IActionResult> Delete(int id)
         {
             var success = await _service.DeleteAsync(id);
@@ -57,10 +64,12 @@ namespace beaconta.Api.Controllers
         }
 
         [HttpPut("{id:int}/permissions")]
+        // [Authorize(Policy = "roles.update")]
         public async Task<IActionResult> UpdatePermissions(int id, [FromBody] UpdateRolePermissionsDto dto)
         {
-            if (dto == null || dto.PermissionIds == null || !dto.PermissionIds.Any())
-                return BadRequest(new { message = "قائمة الصلاحيات مطلوبة." });
+            // ⬅️ السماح بقائمة فارغة لتفريغ صلاحيات الدور
+            if (dto == null || dto.PermissionIds == null)
+                return BadRequest(new { message = "قائمة الصلاحيات مطلوبة (حتى لو كانت فارغة)." });
 
             dto.RoleId = id;
             var updatedRole = await _service.UpdatePermissionsAsync(dto);
@@ -70,10 +79,12 @@ namespace beaconta.Api.Controllers
         }
 
         [HttpGet("{id:int}/users")]
+        // [Authorize(Policy = "roles.view")]
         public async Task<IActionResult> GetUsers(int id)
             => Ok(await _service.GetUsersByRoleIdAsync(id));
 
         [HttpPost("{id:int}/clone")]
+        // [Authorize(Policy = "roles.update")]
         public async Task<IActionResult> ClonePermissions(int id, [FromBody] CloneRoleDto dto)
         {
             if (dto == null || dto.FromRoleId <= 0)

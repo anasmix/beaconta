@@ -1,0 +1,11 @@
+﻿[dir="rtl"] .form-label {
+    font-weight: 600;
+}
+
+#year-alert {
+    transition: opacity .2s ease-in-out;
+}
+
+input.is-valid, textarea.is-valid {
+    border-color: #28a745 !important;
+}

@@ -1,35 +1,32 @@
-﻿using beaconta.Application.Interfaces;
+﻿using System.Net.Mime;
+using beaconta.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace beaconta.Api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    [Authorize]
+    [Route("api/menu")]                      // مسار ثابت
+    [Authorize]                              // أي مستخدم مُسجّل
+    [Produces(MediaTypeNames.Application.Json)]
     public class MenuController : ControllerBase
     {
         private readonly IMenuService _menu;
 
         public MenuController(IMenuService menu) => _menu = menu;
 
-        // ✅ قائمة المستخدم المفلترة
+        // GET /api/menu/my
         [HttpGet("my")]
         public async Task<IActionResult> GetMyMenu(CancellationToken ct)
-        {
-            var data = await _menu.GetMenuForCurrentUserAsync(ct);
-            return Ok(data);
-        }
+            => Ok(await _menu.GetMenuForCurrentUserAsync(ct));
 
-        // ✅ الكاتالوج الكامل (لعرضه في إدارة المجموعات)
+        // GET /api/menu/catalog
         [HttpGet("catalog")]
-        [Authorize(Roles = "admin")] // أو حسب ما تحب
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetCatalog(CancellationToken ct)
-        {
-            var data = await _menu.GetMenuCatalogAsync(ct);
-            return Ok(data);
-        }
+            => Ok(await _menu.GetMenuCatalogAsync(ct));
 
+        // POST /api/menu/invalidate/{userId}
         [HttpPost("invalidate/{userId:int}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Invalidate(int userId)
@@ -37,7 +34,5 @@ namespace beaconta.Api.Controllers
             await _menu.InvalidateCacheForUserAsync(userId);
             return Ok(new { message = "Cache cleared" });
         }
-
-
     }
 }

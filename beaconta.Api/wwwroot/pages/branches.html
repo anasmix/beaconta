@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>نظام المدارس | إدارة الفروع</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="/css/site.css" rel="stylesheet" />
+
+    <style>
+        body {
+            font-family: 'Almarai', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .appbar {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px #0000000d;
+        }
+
+        .stat-card, .toolbar-card, .table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px #0000000d;
+        }
+
+        .row-gap > [class*="col-"] {
+            margin-bottom: 12px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+        }
+
+        .bulk-toolbar {
+            display: none
+        }
+
+        .badge-status {
+            font-size: .825rem;
+        }
+
+        .select2-container .select2-selection--single {
+            height: 38px
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 38px
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 38px
+        }
+    </style>
+</head>
+<body class="p-3 p-md-4">
+
+    <!-- App Bar -->
+    <div class="container-fluid mb-3">
+        <div class="appbar p-3 p-md-4 d-flex justify-content-between flex-wrap gap-2">
+            <div>
+                <h4 class="fw-bold mb-1"><i class="bi bi-diagram-3 me-2"></i>إدارة الفروع</h4>
+                <div class="text-muted small">إضافة وتعديل الفروع، مع ربطها بالمدرسة وإدارتها تشغيليًا</div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" id="btnExport" data-perm="branches.export">
+                    <i class="bi bi-box-arrow-up me-1"></i>تصدير
+                </button>
+                <button class="btn btn-primary" id="btnAddBranch" data-perm="branches.create">
+                    <i class="bi bi-plus-circle me-1"></i>فرع جديد
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="container-fluid mb-3">
+        <div class="row row-gap">
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-primary-subtle"><i class="bi bi-diagram-3 text-primary fs-4"></i></div>
+                    <div><div class="text-muted small">إجمالي الفروع</div><div class="h5 fw-bold mb-0" id="statTotal">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-success-subtle"><i class="bi bi-check2-circle text-success fs-4"></i></div>
+                    <div><div class="text-muted small">نشطة</div><div class="h5 fw-bold mb-0" id="statActive">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-secondary-subtle"><i class="bi bi-slash-circle text-secondary fs-4"></i></div>
+                    <div><div class="text-muted small">غير نشطة</div><div class="h5 fw-bold mb-0" id="statInactive">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-warning-subtle"><i class="bi bi-clock-history text-warning fs-4"></i></div>
+                    <div><div class="text-muted small">آخر تحديث</div><div class="h6 fw-bold mb-0" id="statUpdated">—</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="container-fluid mb-3">
+        <div class="toolbar-card p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">المدرسة</label>
+                    <select id="filterSchoolId" class="form-select"></select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label">الحالة</label>
+                    <select id="filterStatus" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="Active">نشطة</option>
+                        <option value="Inactive">غير نشطة</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label">المدينة</label>
+                    <input id="filterCity" class="form-control" placeholder="مثال: الرياض">
+                </div>
+                <div class="col-6 col-md-1">
+                    <label class="form-label">سعة ≥</label>
+                    <input id="filterCapMin" type="number" min="0" class="form-control" placeholder="0">
+                </div>
+                <div class="col-6 col-md-1">
+                    <label class="form-label">سعة ≤</label>
+                    <input id="filterCapMax" type="number" min="0" class="form-control" placeholder="9999">
+                </div>
+                <div class="col-12 col-md-12 d-flex gap-2 mt-2">
+                    <button id="btnResetFilters" class="btn btn-light border"><i class="bi bi-arrow-counterclockwise me-1"></i>إعادة تعيين</button>
+
+                    <!-- Bulk toolbar (حقن تلقائيًا عند اللود أيضًا) -->
+                    <div id="bulkToolbar" class="d-flex gap-2 ms-auto bulk-toolbar">
+                        <span class="badge bg-info-subtle text-info-emphasis px-3">المحدد: <b id="bulkCount">0</b></span>
+                        <button id="bulkActivate" class="btn btn-sm btn-outline-success" data-perm="branches.update">
+                            <i class="bi bi-toggle2-on me-1"></i>تفعيل
+                        </button>
+                        <button id="bulkDeactivate" class="btn btn-sm btn-outline-warning" data-perm="branches.update">
+                            <i class="bi bi-toggle2-off me-1"></i>تعطيل
+                        </button>
+                        <button id="bulkTransfer" class="btn btn-sm btn-outline-secondary" data-perm="branches.update">
+                            <i class="bi bi-arrow-left-right me-1"></i>نقل للمدرسة...
+                        </button>
+                        <button id="bulkDelete" class="btn btn-sm btn-outline-danger" data-perm="branches.delete">
+                            <i class="bi bi-trash3 me-1"></i>حذف
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="container-fluid">
+        <div class="table-card p-3">
+            <table id="tblBranches" class="table table-striped table-hover nowrap" style="width:100%">
+                <thead class="table-light">
+                    <tr>
+                        <th></th>
+                        <th>المدرسة</th>
+                        <th>الفرع</th>
+                        <th>الكود</th>
+                        <th>الحالة</th>
+                        <th>المدينة</th>
+                        <th>الحي</th>
+                        <th>الهاتف</th>
+                        <th>السعة</th>
+                        <th>الملتحقون</th>
+                        <th style="width:240px">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal: إضافة/تعديل فرع -->
+    <div class="modal fade" id="branchModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><span id="branchModalTitle">فرع جديد</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="frmBranch" class="needs-validation" novalidate>
+                        <input type="hidden" id="branchId">
+                        <div class="row g-3">
+
+                            <div class="col-md-4">
+                                <label class="form-label required">المدرسة</label>
+                                <select id="schoolId" class="form-select" required></select>
+                                <div class="invalid-feedback">اختر المدرسة.</div>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label class="form-label required">اسم الفرع</label>
+                                <input id="name" class="form-control" required>
+                                <div class="invalid-feedback">هذا الحقل إلزامي.</div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label required">الكود</label>
+                                <input id="code" class="form-control" required placeholder="فريد داخل نفس المدرسة">
+                                <div class="invalid-feedback">هذا الحقل إلزامي.</div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">الحالة</label>
+                                <select id="status" class="form-select">
+                                    <option value="Active">نشطة</option>
+                                    <option value="Inactive">غير نشطة</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">المدينة</label>
+                                <input id="city" class="form-control">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">الحي</label>
+                                <input id="district" class="form-control">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">الهاتف</label>
+                                <input id="phone" class="form-control" placeholder="مثال: 011-5550000">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">المدير</label>
+                                <input id="managerName" class="form-control">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">السعة</label>
+                                <input id="capacity" type="number" min="0" class="form-control" value="0">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">ملتحقون حاليًا</label>
+                                <input id="currentStudents" type="number" min="0" class="form-control" value="0">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Latitude</label>
+                                <input id="latitude" type="number" step="0.000001" class="form-control">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Longitude</label>
+                                <input id="longitude" type="number" step="0.000001" class="form-control">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">ملاحظات</label>
+                                <textarea id="notes" class="form-control" rows="2"></textarea>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                    <button class="btn btn-primary" id="btnSaveBranch"><i class="bi bi-save2 me-1"></i>حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: نقل جماعي -->
+    <div class="modal fade" id="transferModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">نقل الفروع المحددة</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <label class="form-label">إلى المدرسة</label>
+                    <select id="transferSchoolId" class="form-select"></select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                    <button class="btn btn-primary" id="btnConfirmTransfer"><i class="bi bi-arrow-left-right me-1"></i>نقل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS libs -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Shared JS -->
+    <script src="/js/loader.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/core/api.shim.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/datatable.js"></script>
+    <script src="/js/forms.js"></script>
+    <script src="/js/authorize.js"></script>
+
+    <!-- Screen logic -->
+    <script src="/js/branches.js"></script>
+</body>
+</html>

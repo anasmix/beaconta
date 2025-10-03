@@ -27,17 +27,17 @@ namespace beaconta.Infrastructure.Services
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                         .ThenInclude(r => r.RolePermissions)
-                            .ThenInclude(rp => rp.Permission) // ✅ بدل MenuItem
+                            .ThenInclude(rp => rp.Permission) // ✅ الآن يجيب من جدول Permissions
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
 
             if (user == null)
                 return null;
 
-            // التحقق من كلمة السر
+            // ✅ التحقق من كلمة المرور (Bcrypt)
             if (!BCrypt.Net.BCrypt.Verify(password ?? "", user.PasswordHash))
                 return null;
 
-            // ✅ الكلايمز الأساسية
+            // ✅ Claims الأساسية
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -45,24 +45,26 @@ namespace beaconta.Infrastructure.Services
                 new Claim("FullName", user.FullName ?? "")
             };
 
-            // ✅ إضافة جميع الأدوار (Key + Name)
+            // ✅ إضافة الأدوار (Key + Name)
             foreach (var role in user.UserRoles.Select(ur => ur.Role))
             {
-                claims.Add(new Claim(ClaimTypes.Role, role.Key));  // "admin"
-                claims.Add(new Claim("role_name", role.Name));     // "Admin"
+                claims.Add(new Claim(ClaimTypes.Role, role.Key));   // ex: "admin"
+                claims.Add(new Claim("role_name", role.Name));      // ex: "Admin"
             }
 
-            // ✅ إضافة جميع الصلاحيات (Permission.Key من جدول Permissions)
+            // ✅ إضافة جميع الصلاحيات (Permission.Key) من جدول Permissions
             var permissions = user.UserRoles
                 .SelectMany(ur => ur.Role.RolePermissions)
-                .Select(rp => rp.Permission.Key) // 🔴 الآن من جدول Permissions
+                .Select(rp => rp.Permission.Key)
                 .Distinct();
 
             foreach (var perm in permissions)
             {
-                claims.Add(new Claim("permission", perm));
+                // مهم: اسم الكلايم يجب أن يكون "permissions" ليتطابق مع Program.cs
+                claims.Add(new Claim("permissions", perm));
             }
 
+            // ✅ بناء التوكن
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var expire = DateTime.UtcNow.AddMinutes(int.Parse(_config["Jwt:ExpireMinutes"]!));

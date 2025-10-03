@@ -1,0 +1,626 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>نظام المدارس | إدارة المراحل والصفوف</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- CSS Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+
+    <!-- Site shared -->
+    <link href="/css/site.css" rel="stylesheet" />
+
+    <style>
+        body {
+            font-family: 'Almarai', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: #f6f8fb;
+        }
+
+        .appbar, .stat-card, .toolbar-card, .table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px #0000000d;
+        }
+
+        .row-gap > [class*="col-"] {
+            margin-bottom: 12px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+        }
+
+        .bulk-toolbar {
+            display: none;
+        }
+
+        .badge-status {
+            font-size: .825rem;
+        }
+
+        .select2-container .select2-selection--single {
+            height: 38px
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 38px
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 38px
+        }
+
+        .stage-color {
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 50%;
+            display: inline-block;
+            border: 1px solid #e0e0e0;
+            vertical-align: middle;
+            margin-inline-end: .25rem;
+        }
+
+        .legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            margin-inline-end: 1rem;
+            font-size: .85rem;
+            color: #6b7280;
+        }
+
+        .table thead th {
+            white-space: nowrap;
+        }
+
+        .sep {
+            height: 1px;
+            background: #eef1f5;
+            margin: .5rem 0;
+        }
+    </style>
+</head>
+<body class="p-3 p-md-4">
+
+    <!-- App Bar -->
+    <div class="container-fluid mb-3">
+        <div class="appbar p-3 p-md-4 d-flex justify-content-between flex-wrap gap-2">
+            <div>
+                <h4 class="fw-bold mb-1"><i class="bi bi-layers me-2"></i>إدارة المراحل والصفوف</h4>
+                <div class="text-muted small">تعريف المراحل الدراسية (روضة/أساسي/ثانوي...) والصفوف/الشُعب وربطها بالمدارس/الفروع والسنة الدراسية</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-secondary" id="btnExport" data-perm="stages.export"><i class="bi bi-box-arrow-up me-1"></i>تصدير</button>
+                <div class="vr d-none d-md-block"></div>
+                <button class="btn btn-outline-primary" id="btnAddStage" data-perm="stages.create"><i class="bi bi-plus-circle me-1"></i>مرحلة جديدة</button>
+                <button class="btn btn-primary" id="btnAddGrade" data-perm="grades.create"><i class="bi bi-plus-square me-1"></i>صف/شعبة جديدة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="container-fluid mb-3">
+        <div class="row row-gap">
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-primary-subtle"><i class="bi bi-layers text-primary fs-4"></i></div>
+                    <div><div class="text-muted small">المراحل</div><div class="h5 fw-bold mb-0" id="statStages">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-success-subtle"><i class="bi bi-grid-3x3-gap text-success fs-4"></i></div>
+                    <div><div class="text-muted small">الصفوف</div><div class="h5 fw-bold mb-0" id="statGrades">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-warning-subtle"><i class="bi bi-people text-warning fs-4"></i></div>
+                    <div><div class="text-muted small">الشُعب</div><div class="h5 fw-bold mb-0" id="statSections">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-info-subtle"><i class="bi bi-clock-history text-info fs-4"></i></div>
+                    <div><div class="text-muted small">آخر تحديث</div><div class="h6 fw-bold mb-0" id="statUpdated">—</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="container-fluid mb-3">
+        <div class="toolbar-card p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label">المدرسة</label>
+                    <select id="filterSchoolId" class="form-select"></select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">الفرع</label>
+                    <select id="filterBranchId" class="form-select"></select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">السنة الدراسية</label>
+                    <select id="filterYear" class="form-select"></select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">الحالة</label>
+                    <select id="filterStatus" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="Active">نشطة</option>
+                        <option value="Inactive">غير نشطة</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">الفترة</label>
+                    <select id="filterShift" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="Morning">صباحية</option>
+                        <option value="Evening">مسائية</option>
+                        <option value="Full">كاملة</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-12 d-flex gap-2 mt-2 align-items-center">
+                    <button id="btnResetFilters" class="btn btn-light border"><i class="bi bi-arrow-counterclockwise me-1"></i>إعادة تعيين</button>
+                    <div class="legend ms-auto">
+                        <span><i class="stage-color" style="background:#e0f2fe"></i>رياض أطفال</span>
+                        <span><i class="stage-color" style="background:#ecfccb"></i>أساسي</span>
+                        <span><i class="stage-color" style="background:#fae8ff"></i>ثانوي</span>
+                    </div>
+                    <div id="bulkToolbar" class="d-flex gap-2 ms-auto bulk-toolbar">
+                        <span class="badge bg-info-subtle text-info-emphasis px-3">المحدد: <b id="bulkCount">0</b></span>
+                        <button id="bulkActivate" class="btn btn-sm btn-outline-success" data-perm="grades.update"><i class="bi bi-toggle2-on me-1"></i>تفعيل</button>
+                        <button id="bulkDeactivate" class="btn btn-sm btn-outline-warning" data-perm="grades.update"><i class="bi bi-toggle2-off me-1"></i>تعطيل</button>
+                        <button id="bulkAssignTeacher" class="btn btn-sm btn-outline-primary" data-perm="grades.assignTeacher"><i class="bi bi-person-plus me-1"></i>تعيين مربي صف</button>
+                        <button id="bulkDelete" class="btn btn-sm btn-outline-danger" data-perm="grades.delete"><i class="bi bi-trash3 me-1"></i>حذف</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="container-fluid">
+        <div class="table-card p-3">
+            <table id="tblStagesGrades" class="table table-striped table-hover nowrap" style="width:100%">
+                <thead class="table-light">
+                    <tr>
+                        <th></th>
+                        <th>المدرسة</th>
+                        <th>الفرع</th>
+                        <th>المرحلة</th>
+                        <th>الصف</th>
+                        <th>الشعبة</th>
+                        <th>الكود</th>
+                        <th>الفترة</th>
+                        <th>السنة</th>
+                        <th>الحالة</th>
+                        <th>الطاقة (طلاب)</th>
+                        <th>مربي الصف</th>
+                        <th style="width:260px">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal: مرحلة جديدة / تعديل مرحلة -->
+    <div class="modal fade" id="stageModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><span id="stageModalTitle">مرحلة جديدة</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="frmStage" class="needs-validation" novalidate>
+                        <input type="hidden" id="stageId">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label required">المدرسة</label>
+                                <select id="stageSchoolId" class="form-select" required></select>
+                                <div class="invalid-feedback">اختر المدرسة.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">الفرع</label>
+                                <select id="stageBranchId" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">اسم المرحلة</label>
+                                <input id="stageName" class="form-control" required>
+                                <div class="invalid-feedback">هذا الحقل إلزامي.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الرمز</label>
+                                <input id="stageCode" class="form-control" placeholder="اختياري">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">اللون</label>
+                                <input id="stageColor" type="color" class="form-control form-control-color" value="#e0f2fe">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">ترتيب العرض</label>
+                                <input id="stageSortOrder" type="number" class="form-control" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">الحالة</label>
+                                <select id="stageStatus" class="form-select">
+                                    <option value="Active">نشطة</option>
+                                    <option value="Inactive">غير نشطة</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">الفترة الافتراضية</label>
+                                <select id="stageShift" class="form-select">
+                                    <option value="">—</option>
+                                    <option value="Morning">صباحية</option>
+                                    <option value="Evening">مسائية</option>
+                                    <option value="Full">كاملة</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">ملاحظات</label>
+                                <textarea id="stageNotes" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                    <button class="btn btn-primary" id="btnSaveStage"><i class="bi bi-save2 me-1"></i>حفظ المرحلة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: صف/شعبة جديدة -->
+    <div class="modal fade" id="gradeModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><span id="gradeModalTitle">صف/شعبة جديدة</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="frmGrade" class="needs-validation" novalidate>
+                        <input type="hidden" id="gradeId">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label required">المدرسة</label>
+                                <select id="gradeSchoolId" class="form-select" required></select>
+                                <div class="invalid-feedback">اختر المدرسة.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الفرع</label>
+                                <select id="gradeBranchId" class="form-select"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label required">المرحلة</label>
+                                <select id="gradeStageId" class="form-select" required></select>
+                                <div class="invalid-feedback">اختر المرحلة.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label required">اسم الصف</label>
+                                <input id="gradeName" class="form-control" required placeholder="مثال: الأول الأساسي">
+                                <div class="invalid-feedback">هذا الحقل إلزامي.</div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">اسم الشعبة</label>
+                                <input id="sectionName" class="form-control" placeholder="مثال: أ / ب / 1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الكود</label>
+                                <input id="gradeCode" class="form-control" placeholder="فريد داخل المدرسة/الفرع">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">الفترة</label>
+                                <select id="gradeShift" class="form-select">
+                                    <option value="">—</option>
+                                    <option value="Morning">صباحية</option>
+                                    <option value="Evening">مسائية</option>
+                                    <option value="Full">كاملة</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">السنة</label>
+                                <select id="gradeYear" class="form-select"></select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">الطاقة</label>
+                                <input id="gradeCapacity" type="number" min="0" class="form-control" value="0">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">مربي الصف</label>
+                                <select id="homeroomTeacherId" class="form-select"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">المشرف</label>
+                                <select id="supervisorId" class="form-select"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">الحالة</label>
+                                <select id="gradeStatus" class="form-select">
+                                    <option value="Active">نشطة</option>
+                                    <option value="Inactive">غير نشطة</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="sep"></div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">وقت البداية</label>
+                                <input id="startTime" type="time" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">وقت النهاية</label>
+                                <input id="endTime" type="time" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">غرفة الصف</label>
+                                <input id="room" class="form-control" placeholder="مثال: A12">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الطابق</label>
+                                <input id="floor" class="form-control" placeholder="مثال: الثاني">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">ملاحظات</label>
+                                <textarea id="gradeNotes" class="form-control" rows="2"></textarea>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                    <button class="btn btn-primary" id="btnSaveGrade"><i class="bi bi-save2 me-1"></i>حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: تعيين مربي صف جماعي -->
+    <div class="modal fade" id="assignTeacherModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">تعيين مربي صف</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <label class="form-label">اختر المعلم</label>
+                    <select id="assignTeacherId" class="form-select"></select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                    <button class="btn btn-primary" id="btnConfirmAssign"><i class="bi bi-check2 me-1"></i>تعيين</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS libs -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Shared JS -->
+    <script src="/js/loader.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/core/api.shim.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/datatable.js"></script>
+    <script src="/js/forms.js"></script>
+    <script src="/js/authorize.js"></script>
+
+    <!-- Screen logic -->
+    <script>
+  $(async function(){
+    'use strict';
+
+    // ===== Permissions
+    const PERM = {
+      view: 'stages.view',
+      export: 'stages.export',
+      sCreate: 'stages.create', sUpdate: 'stages.update', sDelete: 'stages.delete',
+      gCreate: 'grades.create',  gUpdate: 'grades.update',  gDelete: 'grades.delete',
+      assignTeacher: 'grades.assignTeacher'
+    };
+
+    // ===== Endpoints (back-end should provide)
+    const EP = {
+      stages: (q='') => `/stages${q}`,
+      stage:  (id) => `/stages/${id}`,
+      grades: (q='') => `/grades${q}`,
+      grade:  (id) => `/grades/${id}`,
+      stats:  (q='') => `/stages/stats${q}`,
+      schools: () => `/schools`,
+      branches: (schoolId) => `/branches?schoolId=${schoolId||''}`,
+      teachers: (q='') => `/teachers${q}`,
+      years: () => `/years`
+    };
+
+    // ===== Helpers
+    const applyAuth = (root=document) => window.Authorize?.applyWithin?.(root);
+    const ensurePerm = (k) => { if(!(window.Authorize&&Authorize.has)) return true; if(!Authorize.has(k)){ window.Utils?.toastError?.('ليست لديك صلاحية'); return false;} return true; };
+    const esc = (s)=> (window.utils?.escapeHtml?.(s) ?? String(s ?? '').replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])));
+    const statusPill = (v)=> (String(v).toLowerCase()==='active')? '<span class="badge bg-success-subtle text-success-emphasis badge-status">نشطة</span>' : '<span class="badge bg-secondary-subtle text-secondary-emphasis badge-status">غير نشطة</span>';
+
+    // ===== Select2 loaders
+    async function loadSchools($sel, includeAll=false){ const items = await Api.get(EP.schools()); $sel.empty(); if(includeAll) $sel.append(new Option('كل المدارس','',true,true)); (items||[]).forEach(x=>$sel.append(new Option(x.name,x.id))); $sel.select2({theme:'bootstrap-5',width:'100%',allowClear:includeAll,placeholder: includeAll?'كل المدارس':'اختر مدرسة'}); }
+    async function loadBranches($sel, schoolId, includeAll=false){ const items = schoolId? await Api.get(EP.branches(schoolId)) : []; $sel.empty(); if(includeAll) $sel.append(new Option('كل الفروع','',true,true)); (items||[]).forEach(x=>$sel.append(new Option(x.name,x.id))); $sel.select2({theme:'bootstrap-5',width:'100%',allowClear:includeAll,placeholder: includeAll?'كل الفروع':'اختر فرع'}); }
+    async function loadYears($sel, includeAll=false){ const items = await Api.get(EP.years()); $sel.empty(); if(includeAll) $sel.append(new Option('كل السنوات','',true,true)); (items||[]).forEach(x=>$sel.append(new Option(x.name||x.title||x.code,x.id))); $sel.select2({theme:'bootstrap-5',width:'100%',allowClear:includeAll,placeholder: includeAll?'كل السنوات':'اختر سنة'}); }
+    async function loadTeachers($sel){ const items = await Api.get(EP.teachers('?role=teacher')); $sel.empty(); $sel.append(new Option('—', '', true, true)); (items||[]).forEach(x=>$sel.append(new Option(x.fullName||x.name, x.id))); $sel.select2({theme:'bootstrap-5',width:'100%',allowClear:true,placeholder:'—'}); }
+
+    // ===== Filters
+    await loadSchools($('#filterSchoolId'), true);
+    await loadYears($('#filterYear'), true);
+    $('#filterSchoolId').on('change', async function(){ await loadBranches($('#filterBranchId'), $(this).val(), true); reload(); loadStats(); });
+    $('#filterBranchId,#filterYear,#filterStatus,#filterShift').on('change', ()=>{ reload(); loadStats(); });
+    $('#btnResetFilters').on('click', async ()=>{ $('#filterSchoolId').val('').trigger('change'); $('#filterBranchId').val('').trigger('change'); $('#filterStatus').val(''); $('#filterShift').val(''); $('#filterYear').val('').trigger('change'); reload(); loadStats(); });
+
+    // ===== Query builder
+    function buildQuery(){ const p = new URLSearchParams(); const schoolId=$('#filterSchoolId').val(); const branchId=$('#filterBranchId').val(); const status=$('#filterStatus').val(); const shift=$('#filterShift').val(); const year=$('#filterYear').val(); if(schoolId) p.set('schoolId',schoolId); if(branchId) p.set('branchId',branchId); if(status) p.set('status',status); if(shift) p.set('shift',shift); if(year) p.set('yearId',year); const q=p.toString(); return q?`?${q}`:''; }
+
+    // ===== DataTable
+    let dt; const $tbl = $('#tblStagesGrades');
+
+    function ensureSelectHeader(){ const $th0 = $('#tblStagesGrades thead th').first(); if($th0.length && !$th0.find('#chkAll').length){ $th0.addClass('text-center').css('width','40px').html('<input type="checkbox" id="chkAll" aria-label="select-all">'); } }
+
+    async function loadTable(){ ensureSelectHeader(); dt = $tbl.DataTable({
+      ajax: { url: API.base + EP.grades(buildQuery()), dataSrc:'', beforeSend: function(x){ const t=window.getToken?.(); if(t) x.setRequestHeader('Authorization','Bearer '+t);} },
+      responsive:true,
+      order:[[3,'asc'],[4,'asc'],[5,'asc']],
+      dom:'Bfrtip',
+      buttons:[ {extend:'excelHtml5', text:'تصدير Excel', title:'Stages_Grades'}, {extend:'copyHtml5', text:'نسخ'}, {extend:'print', text:'طباعة'} ],
+      columns:[
+        { data:'id', title: $tbl.find('thead th').first().html(), className:'text-center', orderable:false, render:(id)=>`<input type="checkbox" class="row-check" data-id="${id}" aria-label="select">` },
+        { data:'schoolName', title:'المدرسة', render:(v)=>`<strong>${esc(v)}</strong>` },
+        { data:'branchName', title:'الفرع', render:(v)=>esc(v||'—') },
+        { data:'stageName', title:'المرحلة', render:(v,_,r)=>`<span class="stage-color" style="background:${esc(r.stageColor||'#eef2ff')}"></span>${esc(v)}` },
+        { data:'gradeName', title:'الصف', className:'inline-editable' },
+        { data:'sectionName', title:'الشعبة', className:'inline-editable', render:(v)=>esc(v||'—') },
+        { data:'code', title:'الكود', className:'inline-editable', render:(v)=>esc(v||'—') },
+        { data:'shift', title:'الفترة', className:'inline-editable', render:(v)=> ({'Morning':'صباحية','Evening':'مسائية','Full':'كاملة'}[v]||'—') },
+        { data:'yearName', title:'السنة', render:(v)=>esc(v||'—') },
+        { data:'status', title:'الحالة', className:'inline-editable', render: statusPill },
+        { data:'capacity', title:'الطاقة (طلاب)', className:'inline-editable text-center', render:(v)=> v??0 },
+        { data:'homeroomTeacherName', title:'مربي الصف', className:'inline-editable', render:(v)=>esc(v||'—') },
+        { data:null, title:'إجراءات', orderable:false, searchable:false, render:(r)=>`
+          <div class="d-flex gap-1 flex-wrap">
+            <button class="btn btn-sm btn-outline-secondary btn-dup" data-id="${r.id}" data-perm="${PERM.gCreate}"><i class="bi bi-files me-1"></i>استنساخ</button>
+            <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${r.id}" data-perm="${PERM.gUpdate}"><i class="bi bi-pencil-square me-1"></i>تعديل</button>
+            <button class="btn btn-sm btn-outline-danger btn-del" data-id="${r.id}" data-perm="${PERM.gDelete}"><i class="bi bi-trash me-1"></i>حذف</button>
+          </div>` }
+      ]
+    });
+
+      // Row actions
+      $tbl.on('click','.btn-edit', onEdit);
+      $tbl.on('click','.btn-del', onDelete);
+      $tbl.on('click','.btn-dup', onDuplicate);
+
+      // Select all / count
+      $tbl.on('change','#chkAll', function(){ $('.row-check').prop('checked', this.checked).trigger('change'); });
+      $tbl.on('change','.row-check', function(){ const n=$('.row-check:checked').length; $('#bulkCount').text(n); $('#bulkToolbar').toggleClass('bulk-toolbar', n===0); applyAuth(document.getElementById('bulkToolbar')); });
+
+      // Inline edit
+      $tbl.on('click','td.inline-editable', function(){ const cell = dt.cell(this); const row = dt.row(this.closest('tr')).data(); const idx = cell.index().column; // 4=grade,5=section,6=code,7=shift,9=status,10=capacity,11=teacher
+        if(idx===4) editText(cell,row,'gradeName');
+        else if(idx===5) editText(cell,row,'sectionName');
+        else if(idx===6) editText(cell,row,'code');
+        else if(idx===7) editSelect(cell,row,'shift',[['','—'],['Morning','صباحية'],['Evening','مسائية'],['Full','كاملة']]);
+        else if(idx===9) editSelect(cell,row,'status',[['Active','نشطة'],['Inactive','غير نشطة']]);
+        else if(idx===10) editNumber(cell,row,'capacity');
+        else if(idx===11) editTeacher(cell,row,'homeroomTeacherId');
+      });
+
+      dt.on('draw', ()=> applyAuth(document.getElementById('tblStagesGrades')));
+
+      // Top buttons
+      $('#btnExport').on('click', ()=>{ if(ensurePerm(PERM.export)) dt?.button(0).trigger(); });
+
+      loadStats();
+    }
+
+    async function reload(){ if(!dt){ await loadTable(); return; } dt.ajax.url(API.base + EP.grades(buildQuery())).load(null,false); }
+
+    // ===== Stats
+    async function loadStats(){ try{ const s = await Api.get(EP.stats(buildQuery())); $('#statStages').text(s?.stages??0); $('#statGrades').text(s?.grades??0); $('#statSections').text(s?.sections??0); const d=new Date(); $('#statUpdated').text(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`); }catch(e){ console.warn('stats failed', e); } }
+
+    // ===== Modals
+    const stageModal = new bootstrap.Modal(document.getElementById('stageModal'));
+    const gradeModal = new bootstrap.Modal(document.getElementById('gradeModal'));
+
+    // Add Stage
+    $('#btnAddStage').on('click', async ()=>{ if(!ensurePerm(PERM.sCreate)) return; openStage(); });
+    async function openStage(id=null){ resetForm('#frmStage'); $('#stageModalTitle').text(id? 'تعديل مرحلة':'مرحلة جديدة'); await loadSchools($('#stageSchoolId'), false); const sid=$('#filterSchoolId').val(); if(sid) $('#stageSchoolId').val(sid).trigger('change'); if(id){ const st = await Api.get(EP.stage(id)); $('#stageId').val(st.id); $('#stageSchoolId').val(st.schoolId).trigger('change'); await loadBranches($('#stageBranchId'), st.schoolId, false); $('#stageBranchId').val(st.branchId||'').trigger('change'); $('#stageName').val(st.name||''); $('#stageCode').val(st.code||''); $('#stageColor').val(st.color||'#e0f2fe'); $('#stageSortOrder').val(st.sortOrder??0); $('#stageStatus').val(st.status||'Active'); $('#stageShift').val(st.shift||''); $('#stageNotes').val(st.notes||''); } else { await loadBranches($('#stageBranchId'), $('#stageSchoolId').val(), false); $('#stageStatus').val('Active'); } stageModal.show(); }
+
+    $('#stageSchoolId').on('change', async function(){ await loadBranches($('#stageBranchId'), $(this).val(), false); });
+
+    $('#btnSaveStage').on('click', async ()=>{ const form=document.getElementById('frmStage'); if(!form.checkValidity()){ form.classList.add('was-validated'); return; } const dto={ id:+($('#stageId').val()||0), schoolId:+($('#stageSchoolId').val()||0), branchId: +($('#stageBranchId').val()||0)||null, name:$('#stageName').val()?.trim(), code:$('#stageCode').val()?.trim()||null, color:$('#stageColor').val()||null, sortOrder:+($('#stageSortOrder').val()||0), status:$('#stageStatus').val()||'Active', shift:$('#stageShift').val()||null, notes:$('#stageNotes').val()?.trim()||null }; try{ const saved = dto.id? await Api.put(EP.stage(dto.id), dto) : await Api.post(EP.stages(), dto); if(saved){ Swal.fire({icon:'success',title:'تم الحفظ',timer:1200,showConfirmButton:false}); stageModal.hide(); reload(); loadStats(); } }catch(err){ console.error('save stage failed', err); Swal.fire({icon:'error',title:'فشل حفظ المرحلة', text: err?.responseJSON?.message || ''}); }});
+
+    // Add Grade
+    $('#btnAddGrade').on('click', async ()=>{ if(!ensurePerm(PERM.gCreate)) return; openGrade(); });
+    async function openGrade(id=null){ resetForm('#frmGrade'); $('#gradeModalTitle').text(id? 'تعديل صف/شعبة':'صف/شعبة جديدة'); await loadSchools($('#gradeSchoolId'), false); const sid=$('#filterSchoolId').val(); if(sid) $('#gradeSchoolId').val(sid).trigger('change'); await loadBranches($('#gradeBranchId'), $('#gradeSchoolId').val(), false); await loadYears($('#gradeYear'), false); await loadTeachers($('#homeroomTeacherId')); await loadTeachers($('#supervisorId'));
+      if(id){ const g = await Api.get(EP.grade(id)); $('#gradeId').val(g.id); $('#gradeSchoolId').val(g.schoolId).trigger('change'); await loadBranches($('#gradeBranchId'), g.schoolId, false); $('#gradeBranchId').val(g.branchId||'').trigger('change'); await fillStages($('#gradeStageId'), g.schoolId); $('#gradeStageId').val(g.stageId).trigger('change'); $('#gradeName').val(g.gradeName||''); $('#sectionName').val(g.sectionName||''); $('#gradeCode').val(g.code||''); $('#gradeShift').val(g.shift||''); $('#gradeYear').val(g.yearId||'').trigger('change'); $('#gradeCapacity').val(g.capacity??0); $('#homeroomTeacherId').val(g.homeroomTeacherId||'').trigger('change'); $('#supervisorId').val(g.supervisorId||'').trigger('change'); $('#gradeStatus').val(g.status||'Active'); $('#gradeNotes').val(g.notes||''); }
+      else { await fillStages($('#gradeStageId'), $('#gradeSchoolId').val()); $('#gradeStatus').val('Active'); }
+      gradeModal.show(); }
+
+    async function fillStages($sel, schoolId){ const items = await Api.get(EP.stages(`?schoolId=${schoolId||''}&status=Active`)); $sel.empty(); (items||[]).forEach(x=>$sel.append(new Option(x.name, x.id))); $sel.select2({theme:'bootstrap-5', width:'100%', placeholder:'اختر مرحلة'}); }
+
+    $('#gradeSchoolId').on('change', async function(){ await loadBranches($('#gradeBranchId'), $(this).val(), false); await fillStages($('#gradeStageId'), $(this).val()); });
+
+    $('#btnSaveGrade').on('click', async ()=>{ const form=document.getElementById('frmGrade'); if(!form.checkValidity()){ form.classList.add('was-validated'); return; } const dto={ id:+($('#gradeId').val()||0), schoolId:+($('#gradeSchoolId').val()||0), branchId:+($('#gradeBranchId').val()||0)||null, stageId:+($('#gradeStageId').val()||0), gradeName:$('#gradeName').val()?.trim(), sectionName:$('#sectionName').val()?.trim()||null, code:$('#gradeCode').val()?.trim()||null, shift:$('#gradeShift').val()||null, yearId:+($('#gradeYear').val()||0)||null, capacity:+($('#gradeCapacity').val()||0), homeroomTeacherId:+($('#homeroomTeacherId').val()||0)||null, supervisorId:+($('#supervisorId').val()||0)||null, status:$('#gradeStatus').val()||'Active', notes:$('#gradeNotes').val()?.trim()||null };
+      try{ const saved = dto.id? await Api.put(EP.grade(dto.id), dto) : await Api.post(EP.grades(), dto); if(saved){ Swal.fire({icon:'success',title:'تم الحفظ',timer:1100,showConfirmButton:false}); gradeModal.hide(); reload(); loadStats(); } }catch(err){ console.error('save grade failed', err); Swal.fire({icon:'error',title:'فشل حفظ الصف/الشعبة', text: err?.responseJSON?.message || ''}); }
+    });
+
+    // ===== Row Handlers
+    async function onEdit(){ if(!ensurePerm(PERM.gUpdate)) return; openGrade($(this).data('id')); }
+    async function onDelete(){ if(!ensurePerm(PERM.gDelete)) return; const id=$(this).data('id'); const conf=await Swal.fire({icon:'warning',title:'حذف الصف/الشعبة',text:'هل أنت متأكد؟',showCancelButton:true,confirmButtonText:'حذف',cancelButtonText:'إلغاء'}); if(!conf.isConfirmed) return; try{ await Api.delete(EP.grade(id)); Swal.fire({icon:'success',title:'تم الحذف',timer:900,showConfirmButton:false}); reload(); loadStats(); }catch(err){ console.error('delete failed',err); Swal.fire({icon:'error',title:'تعذر الحذف', text: err?.responseJSON?.message || ''}); } }
+    async function onDuplicate(){ if(!ensurePerm(PERM.gCreate)) return; const id=$(this).data('id'); try{ const g = await Api.get(EP.grade(id)); delete g.id; g.code = (g.code||'') + '-COPY'; const saved = await Api.post(EP.grades(), g); if(saved){ Swal.fire({icon:'success',title:'تم الاستنساخ',timer:900,showConfirmButton:false}); reload(); loadStats(); } }catch(err){ console.error('dup failed',err); Swal.fire({icon:'error',title:'تعذر الاستنساخ'}); } }
+
+    // ===== Bulk actions
+    $('#bulkActivate').on('click', ()=> bulkToggle('Active'));
+    $('#bulkDeactivate').on('click', ()=> bulkToggle('Inactive'));
+    $('#bulkDelete').on('click', bulkDelete);
+    $('#bulkAssignTeacher').on('click', async ()=>{ const ids=selectedIds(); if(!ids.length) return; await loadTeachers($('#assignTeacherId')); new bootstrap.Modal(document.getElementById('assignTeacherModal')).show(); });
+    $('#btnConfirmAssign').on('click', bulkAssignConfirm);
+
+    function selectedIds(){ return $('.row-check:checked').map((_,el)=> +el.dataset.id).get(); }
+
+    async function bulkToggle(status){ if(!ensurePerm(PERM.gUpdate)) return; const ids=selectedIds(); if(!ids.length) return; const conf=await Swal.fire({icon:'question',title: status==='Active'? 'تفعيل المحدد؟':'تعطيل المحدد؟', showCancelButton:true, confirmButtonText:'تأكيد', cancelButtonText:'إلغاء'}); if(!conf.isConfirmed) return; try{ await Promise.all(ids.map(id=> Api.put(EP.grade(id), { id, status }))); Swal.fire({icon:'success',title:'تم التحديث',timer:900,showConfirmButton:false}); reload(); loadStats(); $('#chkAll').prop('checked',false).trigger('change'); $('.row-check').prop('checked',false).trigger('change'); }catch(err){ console.error('bulk toggle failed',err); Swal.fire({icon:'error',title:'تعذر الإجراء'}); } }
+
+    async function bulkDelete(){ if(!ensurePerm(PERM.gDelete)) return; const ids=selectedIds(); if(!ids.length) return; const conf=await Swal.fire({icon:'warning',title:'حذف المحدد؟',text:`سيتم حذف ${ids.length} عنصرًا`, showCancelButton:true, confirmButtonText:'حذف', cancelButtonText:'إلغاء'}); if(!conf.isConfirmed) return; try{ await Promise.all(ids.map(id=> Api.delete(EP.grade(id)))); Swal.fire({icon:'success',title:'تم الحذف',timer:900,showConfirmButton:false}); reload(); loadStats(); $('#chkAll').prop('checked',false).trigger('change'); $('.row-check').prop('checked',false).trigger('change'); }catch(err){ console.error('bulk delete failed',err); Swal.fire({icon:'error',title:'تعذر الحذف الجماعي'}); } }
+
+    async function bulkAssignConfirm(){ if(!ensurePerm(PERM.assignTeacher)) return; const ids=selectedIds(); if(!ids.length) return; const teacherId = +($('#assignTeacherId').val()||0)||null; if(!teacherId) return; const conf=await Swal.fire({icon:'question',title:'تأكيد تعيين مربي الصف؟', showCancelButton:true, confirmButtonText:'تعيين', cancelButtonText:'إلغاء'}); if(!conf.isConfirmed) return; try{ await Promise.all(ids.map(id=> Api.put(EP.grade(id), { id, homeroomTeacherId: teacherId }))); Swal.fire({icon:'success',title:'تم التعيين',timer:900,showConfirmButton:false}); reload(); loadStats(); bootstrap.Modal.getInstance(document.getElementById('assignTeacherModal'))?.hide(); $('#chkAll').prop('checked',false).trigger('change'); $('.row-check').prop('checked',false).trigger('change'); }catch(err){ console.error('bulk assign failed',err); Swal.fire({icon:'error',title:'تعذر التعيين'}); } }
+
+    // ===== Inline editors
+    async function editText(cell, row, field){ if(!ensurePerm(PERM.gUpdate)) return; const old=row[field]??''; const $td=$(cell.node()); $td.off('click'); $td.html(`<input type="text" class="form-control form-control-sm" value="${esc(old)}">`); const $i=$td.find('input'); $i.trigger('focus').on('keydown blur', async (e)=>{ if(e.type==='keydown' && !['Enter','Escape'].includes(e.key)) return; const cancel=e.key==='Escape'; const val= cancel? old : ($i.val()||'').trim(); try{ if(!cancel && val!==old) await Api.put(EP.grade(row.id), { id: row.id, [field]: val }); }catch(err){ console.error('inline text failed',err); Swal.fire({icon:'error',title:'تعذر التعديل'}); } reload(); }); }
+    async function editNumber(cell,row,field){ if(!ensurePerm(PERM.gUpdate)) return; const old= Number(row[field]??0); const $td=$(cell.node()); $td.off('click'); $td.html(`<input type="number" class="form-control form-control-sm" value="${old}">`); const $i=$td.find('input'); $i.trigger('focus').on('keydown blur', async (e)=>{ if(e.type==='keydown' && !['Enter','Escape'].includes(e.key)) return; const cancel=e.key==='Escape'; const val= cancel? old : Number($i.val()||0); try{ if(!cancel && val!==old) await Api.put(EP.grade(row.id), { id: row.id, [field]: val }); }catch(err){ console.error('inline num failed',err); Swal.fire({icon:'error',title:'تعذر التعديل'}); } reload(); }); }
+    async function editSelect(cell,row,field,options){ if(!ensurePerm(PERM.gUpdate)) return; const old=row[field]??''; const $td=$(cell.node()); $td.off('click'); const opts = options.map(o=>`<option value="${esc(o[0])}" ${o[0]==old?'selected':''}>${esc(o[1])}</option>`).join(''); $td.html(`<select class="form-select form-select-sm">${opts}</select>`); const $s=$td.find('select'); $s.trigger('focus').on('change blur', async ()=>{ const val=$s.val(); try{ if(val!==old) await Api.put(EP.grade(row.id), { id: row.id, [field]: val }); }catch(err){ console.error('inline sel failed',err); Swal.fire({icon:'error',title:'تعذر التعديل'}); } reload(); }); }
+    async function editTeacher(cell,row,field){ if(!ensurePerm(PERM.gUpdate)) return; const $td=$(cell.node()); $td.off('click'); $td.html('<select class="form-select form-select-sm" id="_tmpTeacher"></select>'); await loadTeachers($('#_tmpTeacher')); $('#_tmpTeacher').val('').trigger('change').on('change blur', async function(){ const teacherId= +($(this).val()||0)||null; try{ if(teacherId !== (row.homeroomTeacherId||null)) await Api.put(EP.grade(row.id), { id: row.id, [field]: teacherId }); }catch(err){ console.error('inline teacher failed',err); Swal.fire({icon:'error',title:'تعذر التعديل'}); } reload(); }); }
+
+    // ===== Utils
+    function resetForm(sel){ return window.forms?.resetForm?.(sel) || $(sel)[0].reset(); }
+
+    // ===== Auth init + table
+    if(window.Authorize?.load){ try{ await Authorize.load(); }catch{} }
+    applyAuth(document);
+    await loadBranches($('#filterBranchId'), $('#filterSchoolId').val(), true);
+    await loadTable();
+    $('#btnAddStage').attr('data-perm', PERM.sCreate);
+    $('#btnAddGrade').attr('data-perm', PERM.gCreate);
+    $('#btnExport').attr('data-perm', PERM.export);
+    applyAuth(document);
+  });
+    </script>
+</body>
+</html>

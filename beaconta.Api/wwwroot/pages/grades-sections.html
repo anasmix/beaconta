@@ -1,0 +1,376 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>نظام المدارس | الصفوف والشُعب</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- CSS Libraries (مطابقة لأسلوب المراحل/المدارس) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="/css/site.css" rel="stylesheet" />
+
+    <style>
+        body {
+            font-family: 'Almarai', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .appbar {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px #0000000d;
+        }
+
+        .stat-card, .toolbar-card, .table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px #0000000d;
+        }
+
+        .row-gap > [class*="col-"] {
+            margin-bottom: 12px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+        }
+
+        .color-chip {
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            border: 1px solid #0001;
+            display: inline-block;
+            vertical-align: middle;
+            margin-inline-end: 6px;
+        }
+
+        .select2-container .select2-selection--single {
+            height: 38px
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 38px
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 38px
+        }
+
+        .badge-status {
+            font-size: .825rem;
+        }
+
+        .badge-section {
+            background: #f8fafc;
+            border: 1px solid #e9ecef;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .required:after {
+            content: ' *';
+            color: #e03131
+        }
+
+        .table-responsive {
+            overflow: auto
+        }
+    </style>
+</head>
+<body class="p-3 p-md-4">
+
+    <!-- App Bar -->
+    <div class="container-fluid mb-3">
+        <div class="appbar p-3 p-md-4 d-flex justify-content-between flex-wrap gap-2">
+            <div>
+                <h4 class="fw-bold mb-1"><i class="bi bi-columns-gap me-2"></i>إدارة الصفوف والشُعب</h4>
+                <div class="text-muted small">هيكلة أكاديمية: مدرسة ← مرحلة ← صفوف ← شُعب. إدارة كاملة مع إنشاء دفعي للشُعب وتصدير.</div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" id="btnExportGrades" data-perm="grades.export">
+                    <i class="bi bi-box-arrow-up me-1"></i>تصدير الصفوف
+                </button>
+                <button class="btn btn-primary" id="btnAddGrade" data-perm="grades.create">
+                    <i class="bi bi-plus-circle me-1"></i>صف جديد
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="container-fluid mb-3">
+        <div class="row row-gap">
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-primary-subtle"><i class="bi bi-columns-gap text-primary fs-4"></i></div>
+                    <div><div class="text-muted small">إجمالي الصفوف</div><div class="h5 fw-bold mb-0" id="statGrades">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-info-subtle"><i class="bi bi-grid-3x3-gap text-info fs-4"></i></div>
+                    <div><div class="text-muted small">إجمالي الشُعب</div><div class="h5 fw-bold mb-0" id="statSections">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-success-subtle"><i class="bi bi-check2-circle text-success fs-4"></i></div>
+                    <div><div class="text-muted small">صفوف نشطة</div><div class="h5 fw-bold mb-0" id="statActiveGrades">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-warning-subtle"><i class="bi bi-clock-history text-warning fs-4"></i></div>
+                    <div><div class="text-muted small">آخر تحديث</div><div class="h6 fw-bold mb-0" id="statUpdated">—</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="container-fluid mb-3">
+        <div class="toolbar-card p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">بحث</label>
+                    <input id="txtSearch" type="search" class="form-control" placeholder="ابحث باسم الصف أو الشعبة..." />
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">المدرسة/الفرع</label>
+                    <select id="filterSchoolId" class="form-select" data-placeholder="الكل"></select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">المرحلة</label>
+                    <select id="filterStageId" class="form-select" data-placeholder="الكل" disabled></select>
+                </div>
+                <div class="col-12 col-md-1 d-grid">
+                    <button id="btnResetFilters" class="btn btn-light border"><i class="bi bi-arrow-counterclockwise me-1"></i>تصفير</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table: Grades + Sections summary -->
+    <div class="container-fluid">
+        <div class="table-card p-3">
+            <table id="tblGrades" class="table table-striped table-hover nowrap" style="width:100%">
+                <thead class="table-light">
+                    <tr>
+                        <th>المدرسة</th>
+                        <th>المرحلة</th>
+                        <th>الصف</th>
+                        <th>الترتيب</th>
+                        <th>الشُعب</th>
+                        <th>#</th>
+                        <th style="width:240px">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal: Grade Add/Edit -->
+    <div class="modal fade" id="gradeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><span id="gradeModalTitle">صف جديد</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="frmGrade" class="needs-validation" novalidate>
+                        <input type="hidden" id="gradeId">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label required">المدرسة/الفرع</label>
+                                <select id="schoolId" class="form-select" required></select>
+                                <div class="invalid-feedback">اختر مدرسة.</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label required">المرحلة</label>
+                                <select id="stageId" class="form-select" required disabled></select>
+                                <div class="invalid-feedback">اختر مرحلة.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label required">اسم الصف</label>
+                                <input id="gradeName" class="form-control" required>
+                                <div class="invalid-feedback">الاسم إجباري.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الترتيب</label>
+                                <input id="sortOrder" type="number" min="0" class="form-control" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الحالة</label>
+                                <select id="status" class="form-select">
+                                    <option value="Active">نشط</option>
+                                    <option value="Inactive">غير نشط</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">ملاحظات</label>
+                                <textarea id="notes" class="form-control" rows="2" placeholder="معلومات إضافية..."></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                    <button class="btn btn-primary" id="btnSaveGrade"><i class="bi bi-save2 me-1"></i>حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Sections Manager -->
+    <div class="modal fade" id="sectionsModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-grid-3x3-gap me-1"></i> إدارة شُعب الصف: <span class="fw-bold" id="sectionsModalTitle"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap gap-2 align-items-end">
+                                <div>
+                                    <label class="form-label">توليد دفعة (أ,ب,ج أو A,B,C)</label>
+                                    <div class="input-group">
+                                        <input id="bulkLetters" class="form-control" placeholder="أ,ب,ج">
+                                        <button id="btnBulkSections" class="btn btn-outline-primary" data-perm="sections.create">
+                                            <i class="bi bi-plus-square"></i> توليد
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label">طاقة افتراضية</label>
+                                    <input id="bulkCapacity" type="number" class="form-control" value="35" min="1" style="width:120px">
+                                </div>
+                                <div class="ms-auto">
+                                    <button id="btnAddSectionInline" class="btn btn-primary" data-perm="sections.create">
+                                        <i class="bi bi-plus"></i> إضافة شعبة
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table align-middle" id="tblSections">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>الشعبة</th>
+                                            <th>الطاقة</th>
+                                            <th>المربي</th>
+                                            <th>ملاحظات</th>
+                                            <th style="width:120px">إجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div class="text-muted small">تلميح: انقر مرتين على الخلية لتعديل القيمة مباشرة، أو استخدم زر الحذف لإزالة الشعبة.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Libraries -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Shared JS (تأكد أنها موجودة لديك) -->
+    <script src="/js/loader.js"></script>
+    <script src="/js/auth.js"></script>
+    <!-- فوالباك اختياري لمنع مشكلة API أثناء التطوير المحلي -->
+    <script src="/js/core/api.shim.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/datatable.js"></script>
+    <script src="/js/forms.js"></script>
+    <!-- التفويض (أذونات) -->
+    <script src="/js/authorize.js"></script>
+
+    <!-- Screen logic -->
+    <script src="/js/grades-sections.js"></script>
+
+    <!-- Bootstrap object: endpoints + columns + perms (لالتقاطها داخل grades-sections.js) -->
+    <script>
+    window.__GRADES_SECTIONS_BOOTSTRAP__ = {
+      endpoints: {
+        // Grades
+        list: '/api/grades', // GET ?schoolId=&stageId=&q=  → [{ id, schoolId, schoolName, stageId, stageName, name, sortOrder, status, sections:[{id,name,capacity,teacher,notes}], sectionsCount }]
+        create: '/api/grades', // POST
+        update: (id)=>`/api/grades/${id}`, // PUT
+        remove: (id)=>`/api/grades/${id}`, // DELETE
+        export: '/api/grades/export', // GET file
+        // Sections
+        listSections: (gradeId)=>`/api/grades/${gradeId}/sections`, // GET
+        createSection: (gradeId)=>`/api/grades/${gradeId}/sections`, // POST
+        updateSection: (gradeId, sectionId)=>`/api/grades/${gradeId}/sections/${sectionId}`, // PUT
+        removeSection: (gradeId, sectionId)=>`/api/grades/${gradeId}/sections/${sectionId}`, // DELETE
+        bulkCreateSections: (gradeId)=>`/api/grades/${gradeId}/sections/bulk`, // POST { names:['أ','ب',...], defaultCapacity }
+        // Lookups
+        schools: '/api/schools/min', // GET [{id,name}]
+        stagesBySchool: (schoolId)=>`/api/stages?schoolId=${schoolId}&status=Active` // GET [{id,name,colorHex,sortOrder}]
+      },
+      perms: {
+        grade: { create:'grades.create', update:'grades.update', delete:'grades.delete', export:'grades.export' },
+        section: { create:'sections.create', update:'sections.update', delete:'sections.delete' }
+      },
+      tableColumns: [
+        { data:'schoolName' },
+        { data:'stageName', render:(v,row)=> row.stageColorHex ? `<span class="color-chip" style="background:${row.stageColorHex}"></span>${v}` : v },
+        { data:'name' },
+        { data:'sortOrder' },
+        { data:'sections', orderable:false, searchable:false, render:(arr)=> Array.isArray(arr)&&arr.length? arr.map(s=>`<span class='badge badge-section rounded-pill me-1 mb-1'>${s.name} <span class='text-muted'>(${s.capacity||'-'})</span></span>`).join(''): '<span class="text-muted">—</span>' },
+        { data:'sectionsCount', className:'text-center', width: 48 },
+        { data:null, orderable:false, searchable:false }
+      ]
+    };
+    </script>
+
+    <!-- تهيئة بسيطة (Standalone) في حال أردت اختبار الصفحة قبل ربط grades-sections.js الحقيقي) -->
+    <script>
+    // ملاحظة: يكتفي هذا المقطع بتفعيل Select2 فقط لكي تبدو الصفحة سليمة أثناء الاختبار.
+    document.addEventListener('DOMContentLoaded', ()=>{
+      if (window.jQuery) {
+        $('#filterSchoolId').select2({ theme:'bootstrap-5', width:'100%', placeholder:'كل المدارس' });
+        $('#filterStageId').select2({ theme:'bootstrap-5', width:'100%', placeholder:'كل المراحل' });
+        $('#schoolId').select2({ theme:'bootstrap-5', width:'100%', dropdownParent: $('#gradeModal') });
+        $('#stageId').select2({ theme:'bootstrap-5', width:'100%', dropdownParent: $('#gradeModal') });
+      }
+    });
+    </script>
+</body>
+</html>

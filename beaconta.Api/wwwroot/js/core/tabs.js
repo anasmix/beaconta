@@ -41,7 +41,16 @@
 
             f = document.createElement('iframe');
             f.className = 'frame'; f.dataset.tab = tab.id;
-            const fallbackUrl = !tab.url || tab.url === '#' ? `pages/${tab.id}.html` : tab.url;
+            let fallbackUrl = !tab.url || tab.url === '#'
+                ? `pages/${tab.id}.html`
+                : tab.url;
+
+            // ✅ إذا url يبدأ بـ "/" معناها يشير للـ root -> نحوله على pages/
+            if (fallbackUrl.startsWith('/')) {
+                fallbackUrl = `pages${fallbackUrl}.html`;
+            }
+
+
             const url = fallbackUrl.includes('?') ? `${fallbackUrl}&tabId=${encodeURIComponent(tab.id)}` : `${fallbackUrl}?tabId=${encodeURIComponent(tab.id)}`;
             f.src = url;
            // f.setAttribute('sandbox', 'allow-forms allow-same-origin allow-scripts');

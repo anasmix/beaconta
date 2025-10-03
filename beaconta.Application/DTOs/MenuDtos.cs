@@ -7,6 +7,8 @@
         public string? Icon { get; set; }
         public string Url { get; set; } = "#";
         public int SortOrder { get; set; }
+           // جديد (اختياري):
+    public List<MenuItemActionDto> Actions { get; set; } = new(); 
     }
 
     public sealed class MenuGroupDto
