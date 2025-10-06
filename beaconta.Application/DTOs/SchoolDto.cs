@@ -8,6 +8,9 @@
         public string Status { get; set; } = "Active";
         public string? ColorHex { get; set; }
         public string? Notes { get; set; }
+
+        // لعرضه في الجدول كما في الفرونت
+        public int BranchesCount { get; set; }
     }
 
     public class SchoolUpsertDto

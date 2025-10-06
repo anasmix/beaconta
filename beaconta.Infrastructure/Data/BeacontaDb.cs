@@ -1,5 +1,6 @@
 ﻿using beaconta.Application.Interfaces;
 using beaconta.Domain.Entities;
+using beaconta.Infrastructure.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 
 namespace beaconta.Infrastructure.Data
@@ -27,13 +28,25 @@ namespace beaconta.Infrastructure.Data
         public DbSet<School> Schools { get; set; }
         public DbSet<Stage> Stages => Set<Stage>();
         public DbSet<Grade> Grades => Set<Grade>();
-
         public DbSet<Year> Years => Set<Year>();   // 👈 هذا المطلوب
-
         public DbSet<Branch> Branches => Set<Branch>();
+
+
+          public DbSet<GradeYear> GradeYears => Set<GradeYear>();
+        public DbSet<GradeYearFee> GradeYearFees => Set<GradeYearFee>();
+        public DbSet<SectionYear> SectionYears => Set<SectionYear>();
+
+
+
+
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+
+            modelBuilder.ApplyConfiguration(new SchoolConfig());
 
             // ------- UserRole -------
             modelBuilder.Entity<UserRole>()
@@ -53,6 +66,46 @@ namespace beaconta.Infrastructure.Data
                 .HasIndex(ur => new { ur.UserId, ur.RoleId })
                 .IsUnique();
 
+
+            modelBuilder.Entity<SectionYear>(e =>
+            {
+                e.Property(x => x.Status)
+                 .HasMaxLength(20)
+                 .HasDefaultValue("Active"); // قيمة افتراضية في قاعدة البيانات
+            });
+
+            // داخل OnModelCreating(ModelBuilder b)
+            modelBuilder.Entity<Year>(e =>
+            {
+                e.HasIndex(x => x.IsActive);
+                e.HasIndex(x => x.StartDate);
+            });
+
+
+
+            modelBuilder.Entity<Year>().Property(x => x.Code).HasMaxLength(32);
+            modelBuilder.Entity<Year>().Property(x => x.Name).HasMaxLength(64);
+
+            modelBuilder.Entity<School>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+            modelBuilder.Entity<School>().Property(x => x.Code).HasMaxLength(32);
+
+            modelBuilder.Entity<Stage>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+            modelBuilder.Entity<Stage>().Property(x => x.Code).HasMaxLength(16);
+
+            modelBuilder.Entity<GradeYear>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+            modelBuilder.Entity<GradeYear>().Property(x => x.Shift).HasMaxLength(16);
+            modelBuilder.Entity<GradeYear>().Property(x => x.Gender).HasMaxLength(16);
+            modelBuilder.Entity<GradeYear>().Property(x => x.Status).HasMaxLength(16);
+
+            modelBuilder.Entity<GradeYear>()
+                .HasMany(g => g.Fees)
+                .WithOne()
+                .HasForeignKey(f => f.GradeYearId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SectionYear>()
+                .HasIndex(x => new { x.GradeYearId, x.Name })
+                .IsUnique();
 
             modelBuilder.Entity<Year>(b =>
             {

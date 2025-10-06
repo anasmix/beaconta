@@ -1,217 +1,227 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <title>نظام المدارس | إدارة المدارس</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8" />
+    <title>نظام المدارس | إدارة المدارس (بدون باك-إند)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- CSS Libraries (مطابقة لأسلوب user-management.html) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-  <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
-  <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
-  <link href="/css/site.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
 
-  <style>
-    body { font-family: 'Almarai', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-    .appbar { background: #fff; border-radius: 16px; box-shadow: 0 10px 20px #0000000d; }
-    .stat-card, .toolbar-card, .table-card { background: #fff; border-radius: 16px; box-shadow: 0 10px 20px #0000000d; }
-    .row-gap > [class*="col-"] { margin-bottom: 12px; }
-    .stat-icon { width:48px; height:48px; display:grid; place-items:center; border-radius:12px; }
-    .bulk-toolbar { display:none }
-    .color-chip { width: 18px; height: 18px; border-radius: 999px; border: 1px solid #0001; display:inline-block; vertical-align: middle; }
-    .badge-status { font-size: .825rem; }
-    .select2-container .select2-selection--single { height: 38px }
-    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 38px }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 38px }
-  </style>
+    <link href="/css/site.css" rel="stylesheet" />
+
+    <style>
+        .appbar, .stat-card, .toolbar-card, .table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px #0000000d
+        }
+    </style>
 </head>
 <body class="p-3 p-md-4">
 
-  <!-- App Bar -->
-  <div class="container-fluid mb-3">
-    <div class="appbar p-3 p-md-4 d-flex justify-content-between flex-wrap gap-2">
-      <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-buildings me-2"></i>إدارة المدارس</h4>
-        <div class="text-muted small">إنشاء وتحديث المدارس، ألوان مميزة، وحالة التفعيل</div>
-      </div>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-secondary" id="btnExport"
-                data-perm="schools.export">
-          <i class="bi bi-box-arrow-up me-1"></i>تصدير
-        </button>
-        <button class="btn btn-primary" id="btnAddSchool"
-                data-perm="schools.create">
-          <i class="bi bi-plus-circle me-1"></i>مدرسة جديدة
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Stats -->
-  <div class="container-fluid mb-3">
-    <div class="row row-gap">
-      <div class="col-6 col-md-3">
-        <div class="stat-card p-3 d-flex align-items-center gap-3">
-          <div class="stat-icon bg-primary-subtle"><i class="bi bi-buildings text-primary fs-4"></i></div>
-          <div><div class="text-muted small">إجمالي المدارس</div><div class="h5 fw-bold mb-0" id="statTotal">0</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="stat-card p-3 d-flex align-items-center gap-3">
-          <div class="stat-icon bg-success-subtle"><i class="bi bi-check2-circle text-success fs-4"></i></div>
-          <div><div class="text-muted small">نشطة</div><div class="h5 fw-bold mb-0" id="statActive">0</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="stat-card p-3 d-flex align-items-center gap-3">
-          <div class="stat-icon bg-secondary-subtle"><i class="bi bi-slash-circle text-secondary fs-4"></i></div>
-          <div><div class="text-muted small">غير نشطة</div><div class="h5 fw-bold mb-0" id="statInactive">0</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="stat-card p-3 d-flex align-items-center gap-3">
-          <div class="stat-icon bg-warning-subtle"><i class="bi bi-clock-history text-warning fs-4"></i></div>
-          <div><div class="text-muted small">آخر تحديث</div><div class="h6 fw-bold mb-0" id="statUpdated">—</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Filters -->
-  <div class="container-fluid mb-3">
-    <div class="toolbar-card p-3">
-      <div class="row g-2 align-items-end">
-        <div class="col-12 col-md-4">
-          <label class="form-label">بحث</label>
-          <input id="txtSearch" type="search" class="form-control" placeholder="ابحث بالاسم أو الكود..." />
-        </div>
-        <div class="col-6 col-md-3">
-          <label class="form-label">الحالة</label>
-          <select id="filterStatus" class="form-select">
-            <option value="">الكل</option>
-            <option value="Active">نشطة</option>
-            <option value="Inactive">غير نشطة</option>
-          </select>
-        </div>
-        <div class="col-6 col-md-3">
-          <label class="form-label">اللون</label>
-          <select id="filterColor" class="form-select">
-            <option value="">الكل</option>
-            <option value="blue">أزرق</option>
-            <option value="green">أخضر</option>
-            <option value="red">أحمر</option>
-            <option value="other">ألوان أخرى</option>
-          </select>
-        </div>
-        <div class="col-12 col-md-2 d-grid">
-          <button id="btnResetFilters" class="btn btn-light border"><i class="bi bi-arrow-counterclockwise me-1"></i>إعادة تعيين</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Table -->
-  <div class="container-fluid">
-    <div class="table-card p-3">
-      <table id="tblSchools" class="table table-striped table-hover nowrap" style="width:100%">
-        <thead class="table-light">
-          <tr>
-            <th>المدرسة</th>
-            <th>الكود</th>
-            <th>الحالة</th>
-            <th>اللون</th>
-            <th>عدد الفروع</th>
-            <th style="width:220px">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Modal: إضافة/تعديل مدرسة -->
-  <div class="modal fade" id="schoolModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><span id="schoolModalTitle">مدرسة جديدة</span></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <form id="frmSchool" class="needs-validation" novalidate>
-            <input type="hidden" id="schoolId">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label required">الاسم</label>
-                <input id="name" class="form-control" required>
-                <div class="invalid-feedback">هذا الحقل إلزامي.</div>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">الكود</label>
-                <input id="code" class="form-control" placeholder="اختياري (فريد)">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">الحالة</label>
-                <select id="status" class="form-select">
-                  <option value="Active">نشطة</option>
-                  <option value="Inactive">غير نشطة</option>
-                </select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">اللون</label>
-                <input id="colorHex" type="color" class="form-control form-control-color" value="#0d6efd">
-              </div>
-              <div class="col-12">
-                <label class="form-label">ملاحظات</label>
-                <textarea id="notes" class="form-control" rows="2" placeholder="معلومات إضافية..."></textarea>
-              </div>
+    <!-- App Bar -->
+    <div class="container-fluid mb-3">
+        <div class="appbar p-3 p-md-4 d-flex justify-content-between flex-wrap gap-2">
+            <div>
+                <h4 class="fw-bold mb-1"><i class="bi bi-buildings me-2"></i>إدارة المدارس</h4>
+                <div class="text-muted small">إنشاء وتحديث المدارس، الألوان، حالة التفعيل، والفروع</div>
             </div>
-          </form>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-secondary" id="btnImport"><i class="bi bi-file-earmark-arrow-up me-1"></i>استيراد CSV</button>
+                <button class="btn btn-outline-secondary" id="btnExport"><i class="bi bi-box-arrow-up me-1"></i>تصدير CSV</button>
+                <button class="btn btn-outline-secondary" id="btnTemplates"><i class="bi bi-magic me-1"></i>قوالب</button>
+                <button class="btn btn-primary" id="btnAddSchool"><i class="bi bi-plus-circle me-1"></i>مدرسة جديدة</button>
+                <input type="file" id="fileImport" accept=".csv" class="d-none" />
+            </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
-          <button class="btn btn-primary" id="btnSaveSchool"><i class="bi bi-save2 me-1"></i>حفظ</button>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- JS Libraries -->
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-  <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-  <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
+    <!-- Stats -->
+    <div class="container-fluid mb-3">
+        <div class="row row-gap">
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-primary-subtle"><i class="bi bi-buildings text-primary fs-4"></i></div>
+                    <div><div class="text-muted small">إجمالي المدارس</div><div class="h5 fw-bold mb-0" id="statTotal">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-success-subtle"><i class="bi bi-check2-circle text-success fs-4"></i></div>
+                    <div><div class="text-muted small">نشطة</div><div class="h5 fw-bold mb-0" id="statActive">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-secondary-subtle"><i class="bi bi-slash-circle text-secondary fs-4"></i></div>
+                    <div><div class="text-muted small">غير نشطة</div><div class="h5 fw-bold mb-0" id="statInactive">0</div></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card p-3 d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-warning-subtle"><i class="bi bi-clock-history text-warning fs-4"></i></div>
+                    <div><div class="text-muted small">آخر تحديث</div><div class="h6 fw-bold mb-0" id="statUpdated">—</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <!-- Shared JS (تأكد أنها موجودة عندك) -->
-  <script src="/js/loader.js"></script>
-  <script src="/js/auth.js"></script>
+    <!-- Filters + Bulk toolbar -->
+    <div class="container-fluid mb-3">
+        <div class="toolbar-card p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">بحث</label>
+                    <input id="txtSearch" type="search" class="form-control" placeholder="ابحث بالاسم، الكود، أو الملاحظات..." />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label">الحالة</label>
+                    <select id="filterStatus" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="Active">نشطة</option>
+                        <option value="Inactive">غير نشطة</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label">اللون</label>
+                    <select id="filterColor" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="blue">أزرق</option>
+                        <option value="green">أخضر</option>
+                        <option value="purple">بنفسجي</option>
+                        <option value="orange">برتقالي</option>
+                        <option value="red">أحمر</option>
+                        <option value="gray">رمادي</option>
+                        <option value="other">أخرى</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 d-grid">
+                    <button id="btnResetFilters" class="btn btn-light border"><i class="bi bi-arrow-counterclockwise me-1"></i>إعادة تعيين</button>
+                </div>
+            </div>
 
-  <!-- فوالباك اختياري لمنع مشكلة API -->
-  <script src="/js/core/api.shim.js"></script>
+            <div class="bulk-toolbar mt-3 border-top pt-3">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-muted small">المحدد: <b id="bulkCount">0</b></span>
+                    <button class="btn btn-outline-success btn-sm" id="bulkActivate"><i class="bi bi-check2-circle me-1"></i>تفعيل</button>
+                    <button class="btn btn-outline-secondary btn-sm" id="bulkDeactivate"><i class="bi bi-slash-circle me-1"></i>تعطيل</button>
+                    <button class="btn btn-outline-danger btn-sm" id="bulkDelete"><i class="bi bi-trash3 me-1"></i>حذف</button>
+                    <div class="ms-auto small text-muted">تلميح: استخدم Shift لتحديد نطاق صفوف.</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <script src="/js/api.js"></script>
-  <script src="/js/utils.js"></script>
-  <script src="/js/datatable.js"></script>
-  <script src="/js/forms.js"></script>
+    <!-- Table -->
+    <div class="container-fluid">
+        <div class="table-card p-3">
+            <table id="tblSchools" class="table table-striped table-hover nowrap" style="width:100%">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:36px"><input type="checkbox" id="chkAll" aria-label="تحديد الكل"></th>
+                        <th>المدرسة</th>
+                        <th>الكود</th>
+                        <th>الحالة</th>
+                        <th>اللون</th>
+                        <th>عدد الفروع</th>
+                        <th style="width:230px">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
 
-  <!-- وحدة التفويض (أذونات) -->
-  <script src="/js/authorize.js"></script>
+    <!-- Modal: إضافة/تعديل مدرسة -->
+    <div class="modal fade" id="schoolModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><span id="schoolModalTitle">مدرسة جديدة</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="frmSchool" class="needs-validation" novalidate>
+                        <input type="hidden" id="schoolId">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label required">الاسم</label>
+                                <input id="name" class="form-control" required>
+                                <div class="invalid-feedback">هذا الحقل إلزامي.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الكود</label>
+                                <input id="code" class="form-control" placeholder="اختياري (فريد)">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الحالة</label>
+                                <select id="status" class="form-select">
+                                    <option value="Active">نشطة</option>
+                                    <option value="Inactive">غير نشطة</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">اللون</label>
+                                <input id="colorHex" type="color" class="form-control form-control-color" value="#0d6efd">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">الفروع</label>
+                                <input id="branchesCount" type="number" min="0" class="form-control" value="0">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">ملاحظات</label>
+                                <textarea id="notes" class="form-control" rows="2" placeholder="معلومات إضافية..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted mb-1">لوحة ألوان سريعة</div>
+                                <div id="colorPalette"></div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button>
+                    <button class="btn btn-primary" id="btnSaveSchool"><i class="bi bi-save2 me-1"></i>حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <!-- Screen logic -->
-  <script src="/js/schools.js"></script>
+    <!-- Modal: قوالب -->
+    <div class="modal fade" id="templatesModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-magic me-1"></i> إنشاء سريع من قوالب</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">اختر قالبًا</label>
+                            <select id="tplSet" class="form-select"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light border" data-bs-dismiss="modal">إلغاء</button><button class="btn btn-primary" id="btnApplyTemplate"><i class="bi bi-check2 me-1"></i>تطبيق</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Libraries -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
+
+    <script src="/js/schools.js"></script>
 </body>
 </html>
+
+
+ 
