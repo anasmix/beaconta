@@ -1,0 +1,784 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>نظام المدارس | تحديد الفصول والتقويم</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap RTL + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- DataTables + Buttons -->
+    <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+    <!-- SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css" rel="stylesheet" />
+
+    <!-- FullCalendar -->
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/index.global.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/index.global.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.15/index.global.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.15/index.global.min.css" rel="stylesheet" />
+
+    <style>
+        :root {
+            --brand: #5b8def; /* أزرق هادئ */
+            --brand-2: #22b07d; /* أخضر */
+            --brand-3: #ff9f43; /* برتقالي */
+            --muted: #6c757d;
+            --soft: #f5f7fb;
+        }
+
+        body {
+            font-family: 'Tajawal',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+            background: var(--soft);
+        }
+
+        .page-header {
+            background: linear-gradient(135deg,var(--brand),#7aa6f3);
+            color: #fff;
+            border-radius: 1rem;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            background: #fff;
+            border: 1px solid #e7ecf5;
+            border-radius: 999px;
+            padding: .35rem .8rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,.04)
+        }
+
+            .chip .dot {
+                width: .6rem;
+                height: .6rem;
+                border-radius: 999px;
+                display: inline-block
+            }
+
+        .kpi-card {
+            border: 0;
+            border-radius: 1rem;
+            box-shadow: 0 6px 20px rgba(55,84,170,.08)
+        }
+
+            .kpi-card .icon {
+                font-size: 1.6rem;
+                opacity: .7
+            }
+
+        .toolbar .btn {
+            border-radius: .75rem
+        }
+
+        .fc .fc-toolbar-title {
+            font-size: 1.1rem
+        }
+
+        .legend .item {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+
+        .legend .sw {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            display: inline-block
+        }
+
+        .modal .form-text small {
+            color: var(--muted)
+        }
+
+        .dt-buttons .btn {
+            border-radius: .5rem
+        }
+
+        table.dataTable tbody tr.selected {
+            background: #e8f2ff
+        }
+
+        .badge-year {
+            border: 1px dashed rgba(0,0,0,.09);
+            padding: .35rem .6rem;
+            border-radius: .6rem
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== Header ===== -->
+    <div class="container-fluid py-4">
+        <div class="page-header p-4 d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-calendar2-week"></i>
+                    <h1 class="h4 m-0">تحديد الفصول والتقويم</h1>
+                </div>
+                <p class="m-0 opacity-75">إدارة فصول السنة الدراسية (الفصل الأول/الثاني/الصيفي) والأحداث الأكاديمية (إجازات، اختبارات، مناسبات) مع عرض تقويم تفاعلي.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="chip"><span class="dot" style="background: var(--brand)"></span><span id="activeYearName">2025/2026</span></span>
+                <span class="badge bg-light text-dark badge-year" id="activeYearColor">لون السنة: أزرق</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Filters + Toolbar ===== -->
+    <div class="container-fluid">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label">الفرع</label>
+                <select id="branch" class="form-select" data-placeholder="اختر الفرع"></select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">السنة الدراسية</label>
+                <select id="schoolYear" class="form-select" data-placeholder="اختر السنة"></select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">الوضع</label>
+                <select id="status" class="form-select">
+                    <option value="">الكل</option>
+                    <option value="Active">نشط</option>
+                    <option value="Inactive">متوقف</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 text-md-end">
+                <div class="toolbar d-flex gap-2 justify-content-start justify-content-md-end">
+                    <button class="btn btn-primary" id="btnAddTerm"><i class="bi bi-plus-lg"></i> فصل جديد</button>
+                    <button class="btn btn-outline-secondary" id="btnAddEvent"><i class="bi bi-calendar-plus"></i> حدث في التقويم</button>
+                    <button class="btn btn-outline-success" id="btnExport"><i class="bi bi-download"></i> تصدير JSON</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== KPIs ===== -->
+    <div class="container-fluid mt-4">
+        <div class="row g-3">
+            <div class="col-12 col-md-3">
+                <div class="card kpi-card">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted">عدد الفصول</div>
+                            <div class="h4 m-0" id="kpiTerms">0</div>
+                        </div>
+                        <i class="bi bi-layout-split icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="card kpi-card">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted">أيام الدراسة</div>
+                            <div class="h4 m-0" id="kpiStudyDays">0</div>
+                        </div>
+                        <i class="bi bi-journal-check icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="card kpi-card">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted">عدد الاختبارات</div>
+                            <div class="h4 m-0" id="kpiExams">0</div>
+                        </div>
+                        <i class="bi bi-clipboard2-check icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="card kpi-card">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted">الإجازات</div>
+                            <div class="h4 m-0" id="kpiHolidays">0</div>
+                        </div>
+                        <i class="bi bi-umbrella icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Grid (Terms + Calendar) ===== -->
+    <div class="container-fluid mt-4">
+        <div class="row g-4">
+            <div class="col-12 col-lg-5">
+                <div class="card" style="border-radius:1rem; border:0; box-shadow:0 6px 20px rgba(55,84,170,.08)">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-top-left-radius:1rem; border-top-right-radius:1rem;">
+                        <strong>قائمة الفصول</strong>
+                        <div class="legend d-flex gap-3 small">
+                            <span class="item"><span class="sw" style="background:#5b8def"></span> فصل دراسي</span>
+                            <span class="item"><span class="sw" style="background:#22b07d"></span> إجازة</span>
+                            <span class="item"><span class="sw" style="background:#ff9f43"></span> اختبار</span>
+                        </div>
+                    </div>
+                    <div class="card-body pt-2">
+                        <table id="tblTerms" class="table table-hover w-100 align-middle"></table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-7">
+                <div class="card" style="border-radius:1rem; border:0; box-shadow:0 6px 20px rgba(55,84,170,.08)">
+                    <div class="card-header bg-white" style="border-top-left-radius:1rem; border-top-right-radius:1rem;">
+                        <strong>التقويم الأكاديمي</strong>
+                    </div>
+                    <div class="card-body p-2">
+                        <div id="calendar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Modals ===== -->
+    <div class="modal fade" id="modalTerm" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-layout-split me-1"></i> <span id="termModalTitle">فصل جديد</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="frmTerm" class="row g-3">
+                        <input type="hidden" id="termId" />
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">اسم الفصل</label>
+                            <select class="form-select" id="termName" required>
+                                <option value="الفصل الأول">الفصل الأول</option>
+                                <option value="الفصل الثاني">الفصل الثاني</option>
+                                <option value="الفصل الصيفي">الفصل الصيفي</option>
+                                <option value="مخصص">مخصص…</option>
+                            </select>
+                            <div class="form-text">يمكن اختيار "مخصص" لكتابة اسم حر.</div>
+                        </div>
+                        <div class="col-12 col-md-6 d-none" id="termNameCustomWrap">
+                            <label class="form-label">اسم مخصص</label>
+                            <input class="form-control" id="termNameCustom" placeholder="مثال: فصل تأسيسي" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">تاريخ البداية</label>
+                            <input type="date" class="form-control" id="termStart" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">تاريخ النهاية</label>
+                            <input type="date" class="form-control" id="termEnd" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">أيام الدوام</label>
+                            <select id="termWeekdays" class="form-select" multiple>
+                                <option value="0">الأحد</option>
+                                <option value="1">الاثنين</option>
+                                <option value="2">الثلاثاء</option>
+                                <option value="3">الأربعاء</option>
+                                <option value="4">الخميس</option>
+                                <option value="5">الجمعة</option>
+                                <option value="6">السبت</option>
+                            </select>
+                            <div class="form-text">اختر أيام الدراسة الأسبوعية. يؤثر على حساب عدد الأيام.</div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">الحالة</label>
+                            <select id="termStatus" class="form-select">
+                                <option value="Active">نشط</option>
+                                <option value="Inactive">متوقف</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="termExamPeriod">
+                                <label class="form-check-label" for="termExamPeriod">يحتوي فترة اختبارات نهائية</label>
+                            </div>
+                        </div>
+                        <div class="row g-3 align-items-end" id="examWrap" style="display:none">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">بداية الاختبارات</label>
+                                <input type="date" class="form-control" id="examStart" />
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">نهاية الاختبارات</label>
+                                <input type="date" class="form-control" id="examEnd" />
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">ملاحظات</label>
+                            <textarea class="form-control" id="termNotes" rows="2" placeholder="معلومات إضافية"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="me-auto text-muted small" id="termCalc"></div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveTerm">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEvent" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calendar-plus me-1"></i> حدث جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="frmEvent" class="row g-3">
+                        <input type="hidden" id="eventId" />
+                        <div class="col-12">
+                            <label class="form-label">النوع</label>
+                            <select id="eventType" class="form-select">
+                                <option value="Holiday">إجازة</option>
+                                <option value="Exam">اختبار</option>
+                                <option value="Orientation">تعريف/تهيئة</option>
+                                <option value="Activity">نشاط/مناسبة</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">العنوان</label>
+                            <input class="form-control" id="eventTitle" placeholder="مثال: عطلة منتصف الفصل" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">من</label>
+                            <input type="date" class="form-control" id="eventStart" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">إلى</label>
+                            <input type="date" class="form-control" id="eventEnd" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">ملاحظات</label>
+                            <textarea class="form-control" id="eventNotes" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveEvent">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== JS Libraries ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
+
+    <!-- FullCalendar Global (with locales) -->
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.15/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.15/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales-all.global.min.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+            const $ = jQuery;
+
+            // ====== Demo Data (can be replaced by API later) ======
+            const demoBranches = [
+                { id: 1, name: 'الفرع الرئيسي' },
+                { id: 2, name: 'فرع الروضة' },
+                { id: 3, name: 'فرع الثانوية' }
+            ];
+
+            const demoYears = [
+                { id: 101, name: '2025/2026', colorName: 'أزرق', color: '#5b8def', branchId: 1, active: true, start: '2025-08-15', end: '2026-06-20' },
+                { id: 102, name: '2024/2025', colorName: 'أخضر', color: '#22b07d', branchId: 1, active: false, start: '2024-08-15', end: '2025-06-15' }
+            ];
+
+            // Terms + Events are per (branch, year)
+            const state = {
+                branchId: 1,
+                yearId: 101,
+                status: '',
+                terms: [], // {id,name,start,end,weekdays:[0..6],status,examStart,examEnd,notes}
+                events: [] // {id,type,title,start,end,notes}
+            };
+
+            // Seed some initial data
+            state.terms = [
+                { id: 1, name: 'الفصل الأول', start: '2025-09-01', end: '2025-12-20', weekdays: [0, 1, 2, 3, 4], status: 'Active', examStart: '2025-12-10', examEnd: '2025-12-20', notes: '' },
+                { id: 2, name: 'الفصل الثاني', start: '2026-02-01', end: '2026-05-25', weekdays: [0, 1, 2, 3, 4], status: 'Active', examStart: '2026-05-15', examEnd: '2026-05-25', notes: '' }
+            ];
+
+            state.events = [
+                { id: 1001, type: 'Holiday', title: 'عطلة منتصف الفصل', start: '2025-10-20', end: '2025-10-23', notes: '' },
+                { id: 1002, type: 'Exam', title: 'اختبار منتصف الفصل', start: '2025-11-05', end: '2025-11-07', notes: '' },
+                { id: 1003, type: 'Orientation', title: 'أسبوع التهيئة', start: '2025-08-24', end: '2025-08-28', notes: '' }
+            ];
+
+            // Persist demo locally
+            const LS_KEY = 'terms_calendar_demo_v1';
+            function loadLS() {
+                const raw = localStorage.getItem(LS_KEY);
+                if (!raw) return;
+                try { const obj = JSON.parse(raw); Object.assign(state, obj); } catch { }
+            }
+            function saveLS() {
+                localStorage.setItem(LS_KEY, JSON.stringify({
+                    branchId: state.branchId, yearId: state.yearId, status: state.status,
+                    terms: state.terms, events: state.events
+                }));
+            }
+            loadLS();
+
+            // ====== Utils ======
+            function fmtDate(d) { return new Date(d).toISOString().slice(0, 10); }
+            function daysBetweenInclusive(start, end) {
+                const s = new Date(start), e = new Date(end);
+                return Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
+            }
+            function businessDays(start, end, weekdays) {
+                let cnt = 0; const s = new Date(start), e = new Date(end);
+                for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+                    const wd = (d.getDay() + 6) % 7; // 0=الأحد (نجعل الأحد=0)
+                    if (weekdays.includes(wd)) cnt++;
+                }
+                return cnt;
+            }
+            function overlaps(aStart, aEnd, bStart, bEnd) { return !(new Date(aEnd) < new Date(bStart) || new Date(bEnd) < new Date(aStart)); }
+            function nextId(list) { return (list.reduce((m, x) => Math.max(m, x.id || 0), 0) + 1) || 1; }
+
+            // ====== Bind Filters ======
+            function bindFilters() {
+                $('#branch').select2({ theme: 'bootstrap-5', data: demoBranches.map(b => ({ id: b.id, text: b.name })), width: '100%' });
+                $('#schoolYear').select2({ theme: 'bootstrap-5', data: demoYears.map(y => ({ id: y.id, text: y.name })), width: '100%' });
+
+                $('#branch').val(state.branchId).trigger('change');
+                $('#schoolYear').val(state.yearId).trigger('change');
+
+                $('#branch').on('change', function () { state.branchId = +this.value; refreshHeader(); saveLS(); renderAll(); });
+                $('#schoolYear').on('change', function () { state.yearId = +this.value; refreshHeader(); saveLS(); renderAll(); });
+                $('#status').on('change', function () { state.status = this.value; renderTermsTable(); renderCalendar(); saveLS(); });
+
+                refreshHeader();
+            }
+
+            function refreshHeader() {
+                const y = demoYears.find(y => y.id === state.yearId) || demoYears[0];
+                $('#activeYearName').text(y.name);
+                $('#activeYearColor').text('لون السنة: ' + (y.colorName || '—'));
+            }
+
+            // ====== DataTable ======
+            let dt = null;
+            function renderTermsTable() {
+                const rows = state.terms
+                    .filter(t => !state.status || t.status === state.status)
+                    .sort((a, b) => new Date(a.start) - new Date(b.start))
+                    .map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        start: t.start,
+                        end: t.end,
+                        days: businessDays(t.start, t.end, t.weekdays || []),
+                        status: t.status,
+                        exam: (t.examStart && t.examEnd) ? `${t.examStart} → ${t.examEnd}` : '—',
+                        notes: t.notes || '—'
+                    }));
+
+                if (!dt) {
+                    dt = $('#tblTerms').DataTable({
+                        data: rows,
+                        columns: [
+                            { title: '#', data: 'id', width: '40px' },
+                            { title: 'الفصل', data: 'name' },
+                            { title: 'من', data: 'start' },
+                            { title: 'إلى', data: 'end' },
+                            { title: 'أيام الدراسة', data: 'days', className: 'text-center', width: '110px' },
+                            { title: 'الاختبارات', data: 'exam' },
+                            { title: 'الحالة', data: 'status', render: d => d === 'Active' ? '<span class="badge bg-success">نشط</span>' : '<span class="badge bg-secondary">متوقف</span>', className: 'text-center', width: '90px' },
+                            {
+                                title: '', data: null, orderable: false, className: 'text-end', width: '120px', render: (_, __, row) => `
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${row.id}"><i class="bi bi-pencil-square"></i></button>
+                      <button class="btn btn-sm btn-outline-danger" data-action="del" data-id="${row.id}"><i class="bi bi-trash"></i></button>
+                    </div>` }
+                        ],
+                        language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/ar.json' },
+                        dom: "<'row'<'col-sm-12'tr>>" +
+                            "<'d-flex justify-content-between align-items-center mt-2'<'small i><'dt-buttons'B>>",
+                        buttons: [
+                            { extend: 'copyHtml5', text: 'نسخ', className: 'btn btn-light btn-sm' },
+                            { extend: 'csvHtml5', text: 'CSV', className: 'btn btn-light btn-sm' }
+                        ],
+                        order: [[2, 'asc']]
+                    });
+
+                    $('#tblTerms').on('click', 'button[data-action]', (e) => {
+                        const id = +e.currentTarget.dataset.id; const action = e.currentTarget.dataset.action;
+                        if (action === 'edit') openTermModal(id); else if (action === 'del') removeTerm(id);
+                    });
+                } else {
+                    dt.clear().rows.add(rows).draw();
+                }
+
+                // KPIs
+                $('#kpiTerms').text(rows.length);
+                const exams = state.events.filter(e => e.type === 'Exam').length + state.terms.filter(t => t.examStart && t.examEnd).length;
+                $('#kpiExams').text(exams);
+                const holidays = state.events.filter(e => e.type === 'Holiday').length; $('#kpiHolidays').text(holidays);
+                const studyDaysTotal = state.terms.reduce((s, t) => s + businessDays(t.start, t.end, t.weekdays || []), 0);
+                $('#kpiStudyDays').text(studyDaysTotal);
+            }
+
+            // ====== Calendar ======
+            let calendar;
+            function renderCalendar() {
+                const calEl = document.getElementById('calendar');
+                const y = demoYears.find(y => y.id === state.yearId);
+                const initialDate = y ? y.start : (state.terms[0]?.start || new Date());
+
+                const termEvents = state.terms
+                    .filter(t => !state.status || t.status === state.status)
+                    .flatMap(t => {
+                        const items = [{
+                            id: 'term-' + t.id,
+                            title: t.name,
+                            start: t.start,
+                            end: addOneDay(t.end),
+                            display: 'background',
+                            backgroundColor: '#e8f0ff',
+                            borderColor: '#5b8def'
+                        }];
+                        if (t.examStart && t.examEnd) {
+                            items.push({ id: 'term-exam-' + t.id, title: 'اختبارات ' + t.name, start: t.examStart, end: addOneDay(t.examEnd), color: '#ff9f43' });
+                        }
+                        return items;
+                    });
+
+                const extraEvents = state.events
+                    .filter(ev => !state.status || ev.status === state.status || !ev.status)
+                    .map(ev => ({ id: 'ev-' + ev.id, title: ev.title, start: ev.start, end: addOneDay(ev.end), color: mapEventColor(ev.type), extendedProps: { type: ev.type, notes: ev.notes } }));
+
+                const events = [...termEvents, ...extraEvents];
+
+                if (calendar) { calendar.setOption('events', events); return; }
+
+                calendar = new FullCalendar.Calendar(calEl, {
+                    locale: 'ar',
+                    direction: 'rtl',
+                    buttonText: { today: 'اليوم' },
+                    height: 'auto',
+                    headerToolbar: { start: 'title', center: '', end: 'today dayGridMonth,timeGridWeek,listMonth prev,next' },
+                    initialView: 'dayGridMonth',
+                    initialDate: initialDate,
+                    navLinks: true,
+                    events,
+                    eventClick: function (info) {
+                        const e = info.event;
+                        const isTerm = String(e.id).startsWith('term-');
+                        if (isTerm) {
+                            const id = +String(e.id).split('-')[1];
+                            openTermModal(id);
+                        } else {
+                            Swal.fire({
+                                title: e.title,
+                                html: `<div class="text-start">نوع: <b>${e.extendedProps?.type || '—'}</b><br/>من: ${fmtDate(e.start)}<br/>إلى: ${fmtDate(new Date(e.end.getTime() - 86400000))}<br/>ملاحظات: ${e.extendedProps?.notes || '—'}</div>`,
+                                showCancelButton: true,
+                                confirmButtonText: 'تعديل',
+                                cancelButtonText: 'إغلاق',
+                            }).then(res => { if (res.isConfirmed) { const id = +String(e.id).split('-')[1]; openEventModal(id); } });
+                        }
+                    }
+                });
+                calendar.render();
+            }
+
+            function mapEventColor(type) {
+                switch (type) {
+                    case 'Holiday': return '#22b07d';
+                    case 'Exam': return '#ff9f43';
+                    case 'Orientation': return '#5b8def';
+                    default: return '#7e8da0';
+                }
+            }
+            function addOneDay(dateStr) { const d = new Date(dateStr); d.setDate(d.getDate() + 1); return d; }
+
+            // ====== Terms CRUD ======
+            function openTermModal(id) {
+                const isEdit = !!id; const term = isEdit ? state.terms.find(t => t.id === id) : null;
+                $('#termModalTitle').text(isEdit ? 'تعديل فصل' : 'فصل جديد');
+                $('#termId').val(isEdit ? term.id : '');
+                const namePreset = isEdit && ['الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي'].includes(term.name) ? term.name : (isEdit ? 'مخصص' : 'الفصل الأول');
+                $('#termName').val(namePreset).trigger('change');
+                if (namePreset === 'مخصص') { $('#termNameCustomWrap').removeClass('d-none'); $('#termNameCustom').val(isEdit ? term.name : ''); }
+                else { $('#termNameCustomWrap').addClass('d-none'); $('#termNameCustom').val(''); }
+
+                $('#termStart').val(isEdit ? term.start : '');
+                $('#termEnd').val(isEdit ? term.end : '');
+                $('#termWeekdays').val((isEdit ? term.weekdays : [0, 1, 2, 3, 4]).map(String)).trigger('change');
+                $('#termStatus').val(isEdit ? term.status : 'Active');
+                const hasExam = isEdit ? (!!term.examStart && !!term.examEnd) : false;
+                $('#termExamPeriod').prop('checked', hasExam).trigger('change');
+                $('#examStart').val(isEdit ? (term.examStart || '') : '');
+                $('#examEnd').val(isEdit ? (term.examEnd || '') : '');
+                $('#termNotes').val(isEdit ? (term.notes || '') : '');
+
+                recalcTerm();
+                new bootstrap.Modal(document.getElementById('modalTerm')).show();
+            }
+
+            function removeTerm(id) {
+                const t = state.terms.find(x => x.id === id);
+                Swal.fire({
+                    title: 'حذف الفصل؟', text: t?.name || '', icon: 'warning', showCancelButton: true, confirmButtonText: 'حذف', cancelButtonText: 'تراجع'
+                }).then(r => {
+                    if (r.isConfirmed) {
+                        state.terms = state.terms.filter(x => x.id !== id);
+                        saveLS(); renderTermsTable(); renderCalendar();
+                        Swal.fire('تم الحذف', 'تم حذف الفصل بنجاح', 'success');
+                    }
+                })
+            }
+
+            function recalcTerm() {
+                const s = $('#termStart').val(), e = $('#termEnd').val();
+                const w = ($('#termWeekdays').val() || []).map(Number);
+                if (s && e) {
+                    const days = businessDays(s, e, w);
+                    $('#termCalc').text(`عدد أيام الدراسة المتوقعة: ${days}`);
+                } else $('#termCalc').text('');
+            }
+
+            function saveTerm() {
+                const id = +($('#termId').val() || 0);
+                const nameSel = $('#termName').val();
+                const name = nameSel === 'مخصص' ? ($('#termNameCustom').val() || 'مخصص') : nameSel;
+                const start = $('#termStart').val();
+                const end = $('#termEnd').val();
+                const weekdays = ($('#termWeekdays').val() || []).map(Number);
+                const status = $('#termStatus').val();
+                const hasExam = $('#termExamPeriod').is(':checked');
+                const examStart = hasExam ? $('#examStart').val() : '';
+                const examEnd = hasExam ? $('#examEnd').val() : '';
+                const notes = $('#termNotes').val();
+
+                if (!name || !start || !end) { return Swal.fire('تنبيه', 'يرجى تعبئة الحقول الأساسية', 'warning'); }
+                if (new Date(end) < new Date(start)) return Swal.fire('تنبيه', 'تاريخ النهاية قبل البداية', 'warning');
+
+                // Overlap check with other terms
+                const clash = state.terms.some(t => t.id !== id && overlaps(t.start, t.end, start, end));
+                if (clash) { return Swal.fire('تعارض تواريخ', 'نطاق الفصل يتعارض مع فصل آخر', 'error'); }
+
+                // Exam sanity
+                if (hasExam) {
+                    if (!(examStart && examEnd)) return Swal.fire('تنبيه', 'حدد فترة الاختبارات كاملة', 'warning');
+                    if (new Date(examEnd) < new Date(examStart)) return Swal.fire('تنبيه', 'نهاية الاختبارات قبل البداية', 'warning');
+                    if (!overlaps(start, end, examStart, examEnd)) return Swal.fire('تنبيه', 'فترة الاختبارات خارج نطاق الفصل', 'warning');
+                }
+
+                const obj = { id: id || nextId(state.terms), name, start, end, weekdays, status, examStart: hasExam ? examStart : '', examEnd: hasExam ? examEnd : '', notes };
+                if (id) {
+                    const ix = state.terms.findIndex(x => x.id === id); state.terms[ix] = obj;
+                } else { state.terms.push(obj); }
+                saveLS(); renderTermsTable(); renderCalendar();
+                bootstrap.Modal.getInstance(document.getElementById('modalTerm')).hide();
+                Swal.fire('تم الحفظ', 'تم حفظ الفصل بنجاح', 'success');
+            }
+
+            // ====== Events CRUD ======
+            function openEventModal(id) {
+                const isEdit = !!id; const ev = isEdit ? state.events.find(e => e.id === id) : null;
+                $('#eventId').val(isEdit ? ev.id : '');
+                $('#eventType').val(isEdit ? ev.type : 'Holiday');
+                $('#eventTitle').val(isEdit ? ev.title : '');
+                $('#eventStart').val(isEdit ? ev.start : '');
+                $('#eventEnd').val(isEdit ? ev.end : '');
+                $('#eventNotes').val(isEdit ? ev.notes : '');
+                new bootstrap.Modal(document.getElementById('modalEvent')).show();
+            }
+
+            function saveEvent() {
+                const id = +($('#eventId').val() || 0);
+                const type = $('#eventType').val();
+                const title = $('#eventTitle').val();
+                const start = $('#eventStart').val();
+                const end = $('#eventEnd').val();
+                const notes = $('#eventNotes').val();
+                if (!title || !start || !end) return Swal.fire('تنبيه', 'يرجى تعبئة جميع الحقول', 'warning');
+                if (new Date(end) < new Date(start)) return Swal.fire('تنبيه', 'تاريخ النهاية قبل البداية', 'warning');
+
+                const obj = { id: id || nextId(state.events), type, title, start, end, notes };
+                if (id) { const ix = state.events.findIndex(x => x.id === id); state.events[ix] = obj; }
+                else { state.events.push(obj); }
+
+                saveLS(); renderTermsTable(); renderCalendar();
+                bootstrap.Modal.getInstance(document.getElementById('modalEvent')).hide();
+                Swal.fire('تم الحفظ', 'تم حفظ الحدث', 'success');
+            }
+
+            // ====== Export ======
+            function exportAll() {
+                const y = demoYears.find(y => y.id === state.yearId);
+                const payload = {
+                    branchId: state.branchId,
+                    yearId: state.yearId,
+                    yearRange: { start: y?.start, end: y?.end },
+                    terms: state.terms,
+                    events: state.events
+                };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'terms-calendar.json'; a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // ====== Wireup ======
+            $(function () {
+                // selects
+                bindFilters();
+                $('#termWeekdays').select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'حدد أيام الدراسة' });
+
+                // buttons
+                $('#btnAddTerm').on('click', () => openTermModal());
+                $('#btnAddEvent').on('click', () => openEventModal());
+                $('#btnSaveTerm').on('click', saveTerm);
+                $('#btnSaveEvent').on('click', saveEvent);
+                $('#btnExport').on('click', exportAll);
+
+                // reactive fields
+                $('#termName').on('change', function () {
+                    if (this.value === 'مخصص') $('#termNameCustomWrap').removeClass('d-none');
+                    else $('#termNameCustomWrap').addClass('d-none');
+                });
+                $('#termExamPeriod').on('change', function () { $('#examWrap').toggle(this.checked); });
+                $('#termStart,#termEnd,#termWeekdays').on('change input', recalcTerm);
+
+                // initial
+                renderTermsTable();
+                renderCalendar();
+            });
+
+        })();
+    </script>
+</body>
+</html>

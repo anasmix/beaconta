@@ -57,13 +57,13 @@ builder.Services.AddTransient<IValidator<SectionYearUpsertDto>, SectionYearUpser
 // builder.Services.AddDbContext<BeacontaDb>(...);
 
 // AutoMapper (لو لم يكن مُسجلاً)
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<GradeYearUpsertValidator>(ServiceLifetime.Transient);
 builder.Services.AddValidatorsFromAssemblyContaining<SectionYearUpsertValidator>(ServiceLifetime.Transient);
-
+builder.Services.AddValidatorsFromAssemblyContaining<GradeYearUpsertValidator>();
+builder.Services.AddFluentValidationAutoValidation();
 // في حال تحب التسجيل اليدوي أيضًا (اختياري ولا يتعارض):
 builder.Services.AddTransient<IValidator<SectionYearUpsertDto>, SectionYearUpsertValidator>();
 
@@ -89,6 +89,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 builder.Services.AddEndpointsApiExplorer();
 

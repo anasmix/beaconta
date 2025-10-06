@@ -232,10 +232,15 @@
                     <form id="frmGrade" class="needs-validation" novalidate>
                         <input type="hidden" id="gradeYearId">
                         <div class="row g-3">
-                            <div class="col-md-5">
-                                <label class="form-label required">المدرسة/الفرع</label>
+                            <div class="col-md-3">
+                                <label class="form-label required">المدرسة</label>
                                 <select id="schoolId" class="form-select" required></select>
                                 <div class="invalid-feedback">اختر مدرسة.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label required">الفرع</label>
+                                <select id="branchId" class="form-select" required></select>
+                                <div class="invalid-feedback">اختر فرعًا.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label required">المرحلة</label>

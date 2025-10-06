@@ -1,5 +1,5 @@
-﻿using System.Linq;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using beaconta.Application.DTOs;
@@ -24,18 +24,36 @@ namespace beaconta.Api.Controllers
             _validator = validator;
         }
 
-        // GET: /api/grades/{gradeYearId}/sections
-        [HttpGet]
+        // ======================= GET: list =======================
+        // GET /api/grades/{gradeYearId}/sections
+        [HttpGet(Name = "Sections_List")]
         [Authorize(Policy = "grades.view")]
-        public async Task<IActionResult> List([FromRoute] int gradeYearId, CancellationToken ct)
-            => Ok(await _svc.GetByGradeYearAsync(gradeYearId, ct)); // ✅ تأكد أن الخدمة تُرجع Status
+        [ProducesResponseType(typeof(List<SectionYearDto>), 200)]
+        public async Task<IActionResult> List([FromRoute] int gradeYearId, CancellationToken ct = default)
+            => Ok(await _svc.GetByGradeYearAsync(gradeYearId, ct)); // الخدمة تُرجع Status ضمن DTO
 
-        // POST: /api/grades/{gradeYearId}/sections
-        [HttpPost]
-        [Authorize(Policy = "grades.update")]
-        public async Task<IActionResult> Create([FromRoute] int gradeYearId, [FromBody] SectionYearUpsertDto dto, CancellationToken ct)
+        // ======================= GET: by id =======================
+        // GET /api/grades/{gradeYearId}/sections/{id}
+        [HttpGet("{id:int}", Name = "Sections_GetById")]
+        [Authorize(Policy = "grades.view")]
+        [ProducesResponseType(typeof(SectionYearDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetById([FromRoute] int gradeYearId, [FromRoute] int id, CancellationToken ct = default)
         {
-            dto.GradeYearId = gradeYearId; // ✅ route wins
+            var list = await _svc.GetByGradeYearAsync(gradeYearId, ct);
+            var item = list.FirstOrDefault(x => x.Id == id);
+            return item is null ? NotFound() : Ok(item);
+        }
+
+        // ======================= POST: create =======================
+        // POST /api/grades/{gradeYearId}/sections
+        [HttpPost(Name = "Sections_Create")]
+        [Authorize(Policy = "grades.update")]
+        [ProducesResponseType(typeof(SectionYearDto), 201)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> Create([FromRoute] int gradeYearId, [FromBody] SectionYearUpsertDto dto, CancellationToken ct = default)
+        {
+            dto.GradeYearId = gradeYearId; // route wins
 
             if (_validator is not null)
             {
@@ -43,20 +61,23 @@ namespace beaconta.Api.Controllers
                 if (!vr.IsValid)
                 {
                     var ms = new ModelStateDictionary();
-                    foreach (var e in vr.Errors)
-                        ms.AddModelError(e.PropertyName, e.ErrorMessage);
+                    foreach (var e in vr.Errors) ms.AddModelError(e.PropertyName, e.ErrorMessage);
                     return ValidationProblem(ms);
                 }
             }
 
             var created = await _svc.UpsertAsync(dto, ct);
-            return CreatedAtAction(nameof(List), new { gradeYearId = created.GradeYearId }, created);
+            return CreatedAtRoute("Sections_GetById", new { gradeYearId = created.GradeYearId, id = created.Id }, created);
         }
 
-        // PUT: /api/grades/{gradeYearId}/sections/{id}
-        [HttpPut("{id:int}")]
+        // ======================= PUT: update =======================
+        // PUT /api/grades/{gradeYearId}/sections/{id}
+        [HttpPut("{id:int}", Name = "Sections_Update")]
         [Authorize(Policy = "grades.update")]
-        public async Task<IActionResult> Update([FromRoute] int gradeYearId, [FromRoute] int id, [FromBody] SectionYearUpsertDto dto, CancellationToken ct)
+        [ProducesResponseType(typeof(SectionYearDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Update([FromRoute] int gradeYearId, [FromRoute] int id, [FromBody] SectionYearUpsertDto dto, CancellationToken ct = default)
         {
             if (dto.Id != 0 && dto.Id != id) return BadRequest("Id mismatch.");
 
@@ -69,40 +90,45 @@ namespace beaconta.Api.Controllers
                 if (!vr.IsValid)
                 {
                     var ms = new ModelStateDictionary();
-                    foreach (var e in vr.Errors)
-                        ms.AddModelError(e.PropertyName, e.ErrorMessage);
+                    foreach (var e in vr.Errors) ms.AddModelError(e.PropertyName, e.ErrorMessage);
                     return ValidationProblem(ms);
                 }
             }
 
-            var saved = await _svc.UpsertAsync(dto, ct); // ✅ سيحفظ Status لو تم تمريره
+            // Upsert: لو الخدمة تفشل عندما لا يوجد السجل، ارجع 404
+            var saved = await _svc.UpsertAsync(dto, ct);
             return Ok(saved);
         }
 
-        // DELETE: /api/grades/{gradeYearId}/sections/{id}
-        [HttpDelete("{id:int}")]
+        // ======================= DELETE: single =======================
+        // DELETE /api/grades/{gradeYearId}/sections/{id}
+        [HttpDelete("{id:int}", Name = "Sections_Delete")]
         [Authorize(Policy = "grades.update")]
-        public async Task<IActionResult> Delete([FromRoute] int gradeYearId, [FromRoute] int id, CancellationToken ct)
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Delete([FromRoute] int gradeYearId, [FromRoute] int id, CancellationToken ct = default)
             => (await _svc.DeleteAsync(id, ct)) ? NoContent() : NotFound();
 
-        // POST: /api/grades/{gradeYearId}/sections/bulk
-        [HttpPost("bulk")]
+        // ======================= POST: bulk create =======================
+        // POST /api/grades/{gradeYearId}/sections/bulk-create
+        [HttpPost("bulk-create", Name = "Sections_BulkCreate")]
         [Authorize(Policy = "grades.update")]
-        public async Task<IActionResult> Bulk([FromRoute] int gradeYearId, [FromBody] List<SectionYearUpsertDto> dtos, CancellationToken ct)
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> BulkCreate([FromRoute] int gradeYearId, [FromBody] List<SectionYearUpsertDto> dtos, CancellationToken ct = default)
         {
             dtos ??= new();
             foreach (var d in dtos) d.GradeYearId = gradeYearId;
 
             if (_validator is not null)
             {
+                var ms = new ModelStateDictionary();
                 foreach (var d in dtos)
                 {
                     var vr = await _validator.ValidateAsync(d, ct);
                     if (!vr.IsValid)
                     {
-                        var ms = new ModelStateDictionary();
-                        foreach (var e in vr.Errors)
-                            ms.AddModelError(e.PropertyName, e.ErrorMessage);
+                        foreach (var e in vr.Errors) ms.AddModelError($"{d.Name}.{e.PropertyName}", e.ErrorMessage);
                         return ValidationProblem(ms);
                     }
                 }
@@ -112,15 +138,24 @@ namespace beaconta.Api.Controllers
             return Ok(new { created = count });
         }
 
-        [HttpPatch("{id:int}/lock")]
-        public async Task<IActionResult> Lock([FromRoute] int gradeYearId, [FromRoute] int id, CancellationToken ct)
+        // ======================= PATCH: status lock/unlock =======================
+        // PATCH /api/grades/{gradeYearId}/sections/{id}/lock
+        [HttpPatch("{id:int}/lock", Name = "Sections_Lock")]
+        [Authorize(Policy = "grades.update")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Lock([FromRoute] int gradeYearId, [FromRoute] int id, CancellationToken ct = default)
         {
             var ok = await _svc.SetStatusAsync(gradeYearId, id, "Inactive", ct);
             return ok ? NoContent() : NotFound();
         }
 
-        [HttpPatch("{id:int}/unlock")]
-        public async Task<IActionResult> Unlock([FromRoute] int gradeYearId, [FromRoute] int id, CancellationToken ct)
+        // PATCH /api/grades/{gradeYearId}/sections/{id}/unlock
+        [HttpPatch("{id:int}/unlock", Name = "Sections_Unlock")]
+        [Authorize(Policy = "grades.update")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Unlock([FromRoute] int gradeYearId, [FromRoute] int id, CancellationToken ct = default)
         {
             var ok = await _svc.SetStatusAsync(gradeYearId, id, "Active", ct);
             return ok ? NoContent() : NotFound();

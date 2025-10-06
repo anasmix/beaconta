@@ -82,12 +82,43 @@ public class SchoolYearsController : ControllerBase
                 (y.Code ?? "").Contains(q) ||
                 (y.Notes ?? "").Contains(q));
 
-        var list = await query
+        // 1) مادّة خام بأنواعها الأصلية (بدون ToString/MapYear أثناء SQL)
+        var raw = await query
             .OrderByDescending(y => y.IsActive)
             .ThenByDescending(y => y.StartDate)
             .ThenByDescending(y => y.Id)
-            .Select(y => MapYear(y))
+            .Select(y => new
+            {
+                y.Id,
+                y.Code,
+                y.Name,
+                y.BranchId,
+                y.StartDate,
+                y.EndDate,
+                y.Status, // enum (int)
+                y.ColorHex,
+                y.IsActive,
+                y.FinanceBackPostDays,
+                y.AllowPaymentsOnClosedAcademic,
+                y.Notes
+            })
             .ToListAsync(ct);
+
+        // 2) التحويل إلى DTO في الذاكرة بأمان
+        var list = raw.Select(y => new YearDto(
+            y.Id,
+            y.Code,
+            y.Name,
+            y.BranchId,
+            y.StartDate,
+            y.EndDate,
+            y.Status.ToString(), // الآن على الذاكرة
+            y.ColorHex,
+            y.IsActive,
+            y.FinanceBackPostDays,
+            y.AllowPaymentsOnClosedAcademic,
+            y.Notes
+        )).ToList();
 
         return Ok(list);
     }
@@ -97,8 +128,10 @@ public class SchoolYearsController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct)
     {
+        // نقرأ الكيان بأنواعه الأصلية أولًا
         var y = await _db.Years.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        return y is null ? NotFound() : Ok(MapYear(y));
+        if (y is null) return NotFound();
+        return Ok(MapYear(y)); // التحويل يتم في الذاكرة
     }
 
     // ===================== CURRENT =====================

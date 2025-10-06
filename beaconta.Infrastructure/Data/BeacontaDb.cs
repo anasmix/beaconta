@@ -44,7 +44,8 @@ namespace beaconta.Infrastructure.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
+          
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(BeacontaDb).Assembly);
 
             modelBuilder.ApplyConfiguration(new SchoolConfig());
 
@@ -82,7 +83,7 @@ namespace beaconta.Infrastructure.Data
             });
 
 
-
+                
             modelBuilder.Entity<Year>().Property(x => x.Code).HasMaxLength(32);
             modelBuilder.Entity<Year>().Property(x => x.Name).HasMaxLength(64);
 
