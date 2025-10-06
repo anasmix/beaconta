@@ -1,5 +1,6 @@
 ﻿// Program.cs
 using AutoMapper;
+using beaconta.Api.Validators;
 using beaconta.Application.DTOs;
 using beaconta.Application.Interfaces;       // ✅ IGradeYearService
 using beaconta.Application.Mapping; // أو namespace الـProfile عندك
@@ -15,6 +16,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -57,6 +60,21 @@ builder.Services.AddTransient<IValidator<SectionYearUpsertDto>, SectionYearUpser
 // builder.Services.AddDbContext<BeacontaDb>(...);
 
 // AutoMapper (لو لم يكن مُسجلاً)
+builder.Services.AddAutoMapper(typeof(beaconta.Application.Mapping.TermsCalendarProfile).Assembly);
+
+
+// Services
+builder.Services.AddScoped<ITermYearService, TermYearService>();
+builder.Services.AddScoped<ICalendarEventService, CalendarEventService>();
+
+// Validators
+builder.Services.AddScoped<IValidator<TermYearUpsertDto>, TermYearUpsertValidator>();
+builder.Services.AddScoped<IValidator<CalendarEventUpsertDto>, CalendarEventUpsertValidator>();
+
+ 
+
+// أو لو عندك عدة Validators وتريد التحميل التلقائي من التجميعة:
+builder.Services.AddValidatorsFromAssemblyContaining<CalendarEventUpsertValidator>();
 
 // FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
@@ -66,7 +84,76 @@ builder.Services.AddValidatorsFromAssemblyContaining<GradeYearUpsertValidator>()
 builder.Services.AddFluentValidationAutoValidation();
 // في حال تحب التسجيل اليدوي أيضًا (اختياري ولا يتعارض):
 builder.Services.AddTransient<IValidator<SectionYearUpsertDto>, SectionYearUpsertValidator>();
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy("terms.view", p => p.RequireClaim("perm", "terms.view"));
+    o.AddPolicy("terms.manage", p => p.RequireClaim("perm", "terms.manage"));
 
+    o.AddPolicy("calendar.view", p => p.RequireClaim("perm", "calendar.view"));
+    o.AddPolicy("calendar.manage", p => p.RequireClaim("perm", "calendar.manage"));
+
+    // إن أردت school-years:
+    o.AddPolicy("schoolyears.view", p => p.RequireClaim("perm", "schoolyears.view"));
+    o.AddPolicy("schoolyears.manage", p => p.RequireClaim("perm", "schoolyears.manage"));
+});
+
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("terms.view", p => p.RequireAssertion(ctx =>
+        ctx.User.IsInRole("admin") ||
+        ctx.User.HasClaim("permissions", "terms.view") ||
+        ctx.User.HasClaim("permissions", "terms-calendar")  // ← مفتاحك القديم
+    ));
+
+    options.AddPolicy("terms.manage", p => p.RequireAssertion(ctx =>
+        ctx.User.IsInRole("admin") ||
+        ctx.User.HasClaim("permissions", "terms.manage") ||
+        ctx.User.HasClaim("permissions", "terms-calendar") // لو كنت تستخدم نفس المفتاح للإدارة
+    ));
+});
+
+
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false; // مهم جدًا: لا تغيّر أسماء الـ claim types
+
+static bool HasPerm(ClaimsPrincipal user, params string[] anyOf)
+{
+    // كل permission كـ claim مستقل اسمه "permissions"
+    var perms = user.FindAll("permissions")
+                    .Select(c => c.Value)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    if (user.IsInRole("admin")) return true; // admin bypass
+    return anyOf.Any(p => perms.Contains(p));
+}
+
+builder.Services.AddAuthorization(options =>
+{
+    // شاشة "تحديد الفصول والتقويم"
+    options.AddPolicy("terms.view", policy =>
+        policy.RequireAssertion(ctx => HasPerm(ctx.User,
+            "terms.view",          // الشكل القياسي إن تبنيته لاحقًا
+            "terms-calendar"       // المفتاح الموجود في التوكن الحالي
+        )));
+
+    options.AddPolicy("terms.manage", policy =>
+        policy.RequireAssertion(ctx => HasPerm(ctx.User,
+            "terms.manage",
+            "terms-calendar"       // لو تستخدم نفس المفتاح للإدارة
+        )));
+
+    options.AddPolicy("calendar.view", policy =>
+        policy.RequireAssertion(ctx => HasPerm(ctx.User,
+            "calendar.view",
+            "terms-calendar"
+        )));
+
+    options.AddPolicy("calendar.manage", policy =>
+        policy.RequireAssertion(ctx => HasPerm(ctx.User,
+            "calendar.manage",
+            "terms-calendar"
+        )));
+});
 // خدمات الدومين/الأعمال
 builder.Services.AddScoped<IGradeYearService, GradeYearService>();
 

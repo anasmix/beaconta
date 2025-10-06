@@ -31,8 +31,9 @@ namespace beaconta.Infrastructure.Data
         public DbSet<Year> Years => Set<Year>();   // 👈 هذا المطلوب
         public DbSet<Branch> Branches => Set<Branch>();
 
-
-          public DbSet<GradeYear> GradeYears => Set<GradeYear>();
+        public DbSet<TermYear> TermYears => Set<TermYear>();
+        public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+        public DbSet<GradeYear> GradeYears => Set<GradeYear>();
         public DbSet<GradeYearFee> GradeYearFees => Set<GradeYearFee>();
         public DbSet<SectionYear> SectionYears => Set<SectionYear>();
 
@@ -82,8 +83,27 @@ namespace beaconta.Infrastructure.Data
                 e.HasIndex(x => x.StartDate);
             });
 
+            modelBuilder.Entity<TermYear>(e =>
+            {
+                e.ToTable("TermYears");
+                e.Property(x => x.Name).HasMaxLength(120).IsRequired();
+                e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Active");
+                e.Property(x => x.WeekdaysCsv).HasMaxLength(32).HasDefaultValue("0,1,2,3,4");
+                e.HasOne(x => x.Year).WithMany().HasForeignKey(x => x.YearId).OnDelete(DeleteBehavior.Cascade);
 
-                
+                // فهرس يساعد على كشف/منع التعارض ضمن نفس العام
+                e.HasIndex(x => new { x.YearId, x.StartDate, x.EndDate });
+            });
+
+            modelBuilder.Entity<CalendarEvent>(e =>
+            {
+                e.ToTable("CalendarEvents");
+                e.Property(x => x.Type).HasMaxLength(32).IsRequired();
+                e.Property(x => x.Title).HasMaxLength(200).IsRequired();
+                e.HasOne(x => x.Year).WithMany().HasForeignKey(x => x.YearId).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(x => new { x.YearId, x.StartDate, x.EndDate });
+            });
+
             modelBuilder.Entity<Year>().Property(x => x.Code).HasMaxLength(32);
             modelBuilder.Entity<Year>().Property(x => x.Name).HasMaxLength(64);
 
