@@ -1,0 +1,21 @@
+
+.kpi-card { border: none; border-radius: 1rem; box-shadow: 0 6px 24px rgba(0,0,0,.06); }
+.kpi-label { font-size: .85rem; color: #6c757d; }
+.kpi-value { font-size: 1.6rem; font-weight: 800; }
+.kpi-icon { font-size: 1.8rem; color: #0d6efd; opacity: .85; }
+.kpi-sub { font-size: .8rem; color: #6c757d; margin-top: .25rem; }
+
+.sticky-action { position: sticky; bottom: 0; background: #fff; border-top-left-radius: 1rem; border-top-right-radius: 1rem; }
+
+.badge-status { font-weight: 600; }
+.badge-status.ok { background: #d1e7dd; color: #0f5132; }
+.badge-status.warn { background: #fff3cd; color: #664d03; }
+.badge-status.err { background: #f8d7da; color: #842029; }
+
+.table td, .table th { vertical-align: middle; }
+
+.select2-container--bootstrap-5 .select2-selection { min-height: calc(1.5em + .5rem + 2px); }
+
+/* row highlighting */
+tr.row-eligible { --bs-table-bg: #f8fff6; }
+tr.row-conflict { --bs-table-bg: #fff8f8; }

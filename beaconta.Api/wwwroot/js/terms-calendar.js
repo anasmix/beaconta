@@ -94,27 +94,52 @@
 
     // ================== API calls ==================
     async function loadBranches() {
-        // إن كان عندك endpoint مبسّط:
-        // GET /api/branches?simple=true -> [{id,name}]
-        state.branches = await http('GET', `${API_BASE}/branches?simple=true`);
-        if (!state.branchId && state.branches.length) state.branchId = state.branches[0].id;
+        // GET /api/branches?simple=true -> [{id, schoolId, schoolName, name, code, ...}]
+        const list = await http('GET', `${API_BASE}/branches?simple=true`);
+
+        // احتفظ بكل ما نحتاجه للعرض والبحث
+        state.branches = list.map(b => ({
+            id: b.id,
+            name: b.name,                 // اسم الفرع
+            schoolName: b.schoolName || '', // اسم المدرسة
+            code: b.code || ''
+        }));
+
+        if (!state.branchId && state.branches.length) {
+            state.branchId = state.branches[0].id;
+        }
     }
 
+
+    //async function loadYears() {
+    //    // GET /api/school-years?branchId=x -> YearDto[]
+    //    const list = await http('GET', `${API_BASE}/school-years?branchId=${state.branchId}`);
+    //    // نكيّف للواجهة
+    //    state.years = list.map(y => ({
+    //        id: y.id, name: y.name, branchId: y.branchId,
+    //        colorHex: y.colorHex, isActive: y.isActive,
+    //        startDate: y.startDate, endDate: y.endDate
+    //    }));
+    //    // اختر النشطة أو الأولى
+    //    const active = state.years.find(y => y.isActive);
+    //    state.yearId = active ? active.id : (state.years[0]?.id || null);
+    //    $('#activeYearName').text(active ? active.name : (state.years[0]?.name || '—'));
+    //    $('#activeYearColor').text('لون السنة: ' + ((active?.colorHex || state.years[0]?.colorHex) ? 'محدد' : '—'));
+    //}
     async function loadYears() {
-        // GET /api/school-years?branchId=x -> YearDto[]
         const list = await http('GET', `${API_BASE}/school-years?branchId=${state.branchId}`);
-        // نكيّف للواجهة
         state.years = list.map(y => ({
             id: y.id, name: y.name, branchId: y.branchId,
             colorHex: y.colorHex, isActive: y.isActive,
             startDate: y.startDate, endDate: y.endDate
         }));
-        // اختر النشطة أو الأولى
         const active = state.years.find(y => y.isActive);
         state.yearId = active ? active.id : (state.years[0]?.id || null);
-        $('#activeYearName').text(active ? active.name : (state.years[0]?.name || '—'));
-        $('#activeYearColor').text('لون السنة: ' + ((active?.colorHex || state.years[0]?.colorHex) ? 'محدد' : '—'));
+
+        updateYearBadge(); // 👈 بدل تعبئة العناصر القديمة
     }
+
+
 
     async function loadTerms() {
         if (!state.yearId) { state.terms = []; return; }
@@ -131,15 +156,59 @@
     // ================== Bind Filters ==================
     function bindFilters() {
         // branches select
+        // ============ branches select (اسم المدرسة — اسم الفرع) ============
         $('#branch').select2({
             theme: 'bootstrap-5',
-            data: state.branches.map(b => ({ id: b.id, text: b.name })), width: '100%'
+            width: '100%',
+            placeholder: 'اختر الفرع',
+            data: state.branches.map(b => ({
+                id: b.id,
+                text: `${b.schoolName ? b.schoolName + ' — ' : ''}${b.name}`, // يظهر في مربع الاختيار
+                // نمرّر البيانات الإضافية للـ templates والبحث
+                _school: b.schoolName || '',
+                _branch: b.name || '',
+                _code: b.code || ''
+            })),
+            // عرض غني داخل القائمة
+            templateResult: function (data) {
+                if (!data.id) return data.text;
+                const school = data._school || '';
+                const branch = data._branch || '';
+                const code = data._code ? ` <span class="text-muted">(${data._code})</span>` : '';
+                return $(`
+            <div class="d-flex flex-column">
+                <div><b>${school || branch}</b>${school ? ' — ' + branch : ''}${code}</div>
+            </div>
+        `);
+            },
+            // كيف يظهر العنصر المختار داخل الحقل
+            templateSelection: function (data) {
+                if (!data.id) return data.text;
+                const school = data._school || '';
+                const branch = data._branch || '';
+                return `${school ? school + ' — ' : ''}${branch}`;
+            },
+            // بحث مخصص يشمل اسم المدرسة واسم الفرع والكود
+            matcher: function (params, data) {
+                if ($.trim(params.term) === '') return data;
+                const term = params.term.toLowerCase();
+                const hay = [
+                    (data.text || '').toLowerCase(),
+                    (data._school || '').toLowerCase(),
+                    (data._branch || '').toLowerCase(),
+                    (data._code || '').toLowerCase()
+                ].join(' ');
+                return hay.indexOf(term) > -1 ? data : null;
+            }
         }).val(state.branchId).trigger('change');
+
+
 
         $('#branch').on('change', async function () {
             state.branchId = +this.value;
             await loadYears();
             await reloadDataAndRender();
+            updateYearBadge();
         });
 
         // years select (لو عندك كومبو للسنة)
@@ -150,6 +219,7 @@
         $('#schoolYear').on('change', async function () {
             state.yearId = +this.value;
             await reloadDataAndRender();
+            updateYearBadge(); // 👈
         });
 
         $('#status').on('change', function () {
@@ -222,6 +292,28 @@
         const studyDaysTotal = state.terms.reduce((s, t) => s + businessDays(t.start, t.end, t.weekdays || []), 0);
         $('#kpiStudyDays').text(studyDaysTotal);
     }
+
+    function updateYearBadge() {
+        const y = state.years.find(x => x.id === state.yearId);
+        const nameEl = document.getElementById('ybName');
+        const statusEl = document.getElementById('ybStatus'); // موجودة في الهيدر الجديد
+        const dotEl = document.getElementById('ybColorDot');  // موجودة في الهيدر الجديد
+
+        if (!y) {
+            if (nameEl) nameEl.textContent = '—';
+            if (statusEl) statusEl.textContent = '—';
+            return;
+        }
+
+        if (nameEl) nameEl.textContent = y.name || '—';
+        if (statusEl) statusEl.textContent = (y.isActive || y.status === 'Active') ? 'نشط' : 'متوقف';
+        if (dotEl) dotEl.style.background = y.colorHex || '#5b8def';
+
+        // لأجل التوافق مع العناصر القديمة إن وُجدت في الصفحة
+        $('#activeYearName').text(y.name || '—');
+        $('#activeYearColor').text('لون السنة: ' + (y.colorHex ? 'محدد' : '—'));
+     }
+
 
     function renderCalendar() {
         const calEl = document.getElementById('calendar');

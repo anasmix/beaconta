@@ -115,55 +115,139 @@
             border-radius: .6rem
         }
     </style>
+    <style>
+        .appbar, .toolbar-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px #0000000d;
+            border: 1px solid #eef1f6;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .25rem .6rem;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .chip-dot {
+            width: .65rem;
+            height: .65rem;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .btn-group .btn, .appbar .btn {
+            border-radius: .6rem;
+        }
+    </style>
+
 </head>
 <body>
 
-    <!-- ===== Header ===== -->
-    <div class="container-fluid py-4">
-        <div class="page-header p-4 d-flex flex-wrap justify-content-between align-items-center">
-            <div>
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="bi bi-calendar2-week"></i>
-                    <h1 class="h4 m-0">تحديد الفصول والتقويم</h1>
+    <div class="container-fluid mb-3">
+        <div class="appbar p-3 p-md-4 d-flex justify-content-between flex-wrap gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <h4 class="fw-bold mb-0">
+                    <i class="bi bi-calendar2-week me-2"></i>
+                    تحديد الفصول والتقويم
+                </h4>
+                <!-- نفس فكرة yearBadge من شاشة الصفوف/الشعب -->
+                <div id="yearBadge" class="text-muted small d-flex align-items-center gap-2">
+                    <span class="chip">
+                        <span class="chip-dot" id="ybColorDot" style="background:#5b8def"></span>
+                        <span id="ybName">—</span>
+                    </span>
+                    <span class="chip"><i class="bi bi-shield-check"></i> <span id="ybStatus">—</span></span>
                 </div>
-                <p class="m-0 opacity-75">إدارة فصول السنة الدراسية والأحداث الأكاديمية مع عرض تقويم تفاعلي.</p>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="chip"><span class="dot" style="background: var(--brand)"></span><span id="activeYearName">—</span></span>
-                <span class="badge bg-light text-dark badge-year" id="activeYearColor">لون السنة: —</span>
+
+            <div class="d-flex flex-wrap gap-2">
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-secondary" id="btnYearManage" title="إدارة السنة">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btnReports" title="تقارير مقارنة">
+                        <i class="bi bi-bar-chart"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btnExport" title="تصدير JSON">
+                        <i class="bi bi-box-arrow-up"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btnRefresh" title="تحديث">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <!-- زر الإضافة الرئيسي الخاص بهذه الشاشة -->
+                <button class="btn btn-primary" id="btnAddTerm">
+                    <i class="bi bi-plus-circle me-1"></i> فصل جديد
+                </button>
+                <button class="btn btn-outline-primary" id="btnAddEvent">
+                    <i class="bi bi-calendar-plus me-1"></i> حدث في التقويم
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- ===== Filters + Toolbar ===== -->
-    <div class="container-fluid">
-        <div class="row g-3 align-items-end">
-            <div class="col-12 col-md-3">
-                <label for="branch" class="form-label">الفرع</label>
-                <select id="branch" class="form-select" data-placeholder="اختر الفرع"></select>
-            </div>
-            <div class="col-12 col-md-3">
-                <label for="schoolYear" class="form-label">السنة الدراسية</label>
-                <select id="schoolYear" class="form-select" data-placeholder="اختر السنة"></select>
-            </div>
-            <div class="col-12 col-md-3">
-                <label for="status" class="form-label">الوضع</label>
-                <select id="status" class="form-select">
-                    <option value="">الكل</option>
-                    <option value="Active">نشط</option>
-                    <option value="Inactive">متوقف</option>
-                </select>
-            </div>
-            <div class="col-12 col-md-3 text-md-end">
-                <div class="toolbar d-flex gap-2 justify-content-start justify-content-md-end">
-                    <button class="btn btn-primary" id="btnAddTerm"><i class="bi bi-plus-lg"></i> فصل جديد</button>
-                    <button class="btn btn-outline-secondary" id="btnAddEvent"><i class="bi bi-calendar-plus"></i> حدث في التقويم</button>
-                    <button class="btn btn-outline-success" id="btnExport"><i class="bi bi-download"></i> تصدير JSON</button>
+    <!-- ========== Toolbar (فلاتر موحّدة بأسلوب الشاشة الأخرى) ========== -->
+    <div class="container-fluid mb-3">
+        <div class="toolbar-card p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">الفرع</label>
+                    <select id="branch" class="form-select" data-placeholder="اختر الفرع"></select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">السنة الدراسية</label>
+                    <select id="schoolYear" class="form-select" data-placeholder="اختر السنة"></select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">الوضع</label>
+                    <select id="status" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="Active">نشط</option>
+                        <option value="Inactive">متوقف</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-1 d-grid">
+                    <button id="btnResetFilters" class="btn btn-light border">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>تصفير
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script>
+        // ربط شارة السنة بنفس منطقك الحالي (إن وُجد fetchActiveYear في terms-calendar.js)
+        (async function () {
+            try {
+                if (window.fetchActiveYear) {
+                    const y = await window.fetchActiveYear();
+                    if (!y) return;
+                    // اسم/لون/حالة
+                    document.getElementById('ybName').textContent = y.name || '—';
+                    document.getElementById('ybStatus').textContent = y.status === 'Active' ? 'نشط' : 'متوقف';
+                    const dot = document.getElementById('ybColorDot');
+                    if (y.color) dot.style.background = y.color;
+
+                    // إن كنت تستخدم window.__APP__.yearId مثل شاشة الصفوف/الشعب
+                    if (!window.__APP__) window.__APP__ = {};
+                    if (y.id) window.__APP__.yearId = y.id;
+                }
+            } catch { /* تجاهل أي خطأ غير مهم للعرض */ }
+        })();
+
+        // زر التحديث يطلق أي آلية تحميل تعتمدها في سكربتك الحالي
+        document.getElementById('btnRefresh')?.addEventListener('click', () => {
+            if (typeof window.reloadTerms === 'function') return window.reloadTerms();
+            // احتياطي: تريّغ ثم إعادة تعبئة الجدول/التقويم إن كان عندك دوال عامة
+            if (typeof window.initCalendar === 'function') window.initCalendar();
+            if (typeof window.loadTerms === 'function') window.loadTerms();
+        });
+    </script>
     <!-- ===== KPIs ===== -->
     <div class="container-fluid mt-4">
         <div class="row g-3">
