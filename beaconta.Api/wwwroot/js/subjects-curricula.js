@@ -1,7 +1,31 @@
 (function(){
   'use strict';
-  const $ = jQuery, U = window.Utils;
+    const $ = jQuery;
+    const U = (function () {
+        if (window.Utils) return window.Utils;
+        console.warn('[subjects-curricula] window.Utils غير موجود. تفعيل بدائل مؤقتة.');
+        return {
+            useLatinDigits: function () { /* no-op */ },
+            toLatinDigits: function (s) { return String(s); },
+            select2: function ($el, placeholder) {
+                if ($el && $el.select2) {
+                    $el.select2({
+                        theme: 'bootstrap-5', width: '100%', placeholder: placeholder || '— اختر —',
+                        language: { noResults: () => 'لا توجد نتائج', searching: () => 'جارِ التحميل...' }
+                    });
+                }
+            },
+            toastOk: (m) => Swal?.fire?.({ icon: 'success', title: 'تم', text: m, timer: 1200, showConfirmButton: false }) ?? alert('تم: ' + m),
+            toastErr: (m) => Swal?.fire?.({ icon: 'error', title: 'خطأ', text: m }) ?? alert('خطأ: ' + m),
+            confirmDanger: (title, text) => Swal?.fire?.({ icon: 'warning', title, text, showCancelButton: true, confirmButtonText: 'نعم، تابع', cancelButtonText: 'رجوع' })
+                ?? Promise.resolve({ isConfirmed: confirm((title || '') + '\n' + (text || '')) })
+        };
+    })();
 
+    // ✳️ انقل أول استخدام لـ Utils إلى بعد DOMReady لضمان التحميل
+    $(function () {
+        U.useLatinDigits(true);
+    });
   // DOM
   const $selBranch   = $('#selBranch');
   const $selYear     = $('#selYear');
