@@ -129,27 +129,27 @@ namespace beaconta.Api.Controllers
         }
 
         // ===== GET /api/grades/{id}/sections  👈 مضاف (تكافؤ مع /gradeyears/{id}/sections)
-        [HttpGet("{id:int}/sections")]
-        public async Task<IActionResult> GetSections([FromRoute] int id, CancellationToken ct = default)
-        {
-            var exists = await _db.GradeYears.AsNoTracking().AnyAsync(g => g.Id == id, ct);
-            if (!exists) return NotFound(new { message = $"GradeYear #{id} غير موجود." });
+        //[HttpGet("{id:int}/sections")]
+        //public async Task<IActionResult> GetSections([FromRoute] int id, CancellationToken ct = default)
+        //{
+        //    var exists = await _db.GradeYears.AsNoTracking().AnyAsync(g => g.Id == id, ct);
+        //    if (!exists) return NotFound(new { message = $"GradeYear #{id} غير موجود." });
 
-            var sections = await _db.SectionYears
-                .AsNoTracking()
-                .Where(s => s.GradeYearId == id)
-                .OrderBy(s => s.Name)
-                .Select(s => new
-                {
-                    id = s.Id,
-                    name = s.Name,
-                    capacity = s.Capacity,
-                    status = s.Status
-                })
-                .ToListAsync(ct);
+        //    var sections = await _db.SectionYears
+        //        .AsNoTracking()
+        //        .Where(s => s.GradeYearId == id)
+        //        .OrderBy(s => s.Name)
+        //        .Select(s => new
+        //        {
+        //            id = s.Id,
+        //            name = s.Name,
+        //            capacity = s.Capacity,
+        //            status = s.Status
+        //        })
+        //        .ToListAsync(ct);
 
-            return Ok(sections);
-        }
+        //    return Ok(sections);
+        //}
 
         // ===== تغييرات الحالة (تحتاج صلاحية تحديث) =====
         [HttpPatch("{id:int}/lock")]

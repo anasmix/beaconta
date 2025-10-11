@@ -1,0 +1,42 @@
+﻿.kpi-card {
+    border: 1px dashed #e0e0e0;
+}
+
+.kpi-title {
+    font-size: .85rem;
+    color: #6c757d;
+}
+
+.kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+}
+
+.kpi-sub {
+    font-size: .8rem;
+    color: #9aa0a6;
+}
+
+.sticky-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 1030;
+    background: #fff;
+    border-top: 1px solid #eee;
+    padding: .5rem 0;
+    box-shadow: 0 -6px 12px -8px rgba(0,0,0,.08);
+}
+
+#studentsBox .list-group-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#tblPlan td, #tblPlan th {
+    vertical-align: middle;
+}
+
+.select2-container .select2-selection--single {
+    height: 38px;
+}

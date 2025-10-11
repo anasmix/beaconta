@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using beaconta.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using beaconta.Infrastructure.Data;
 namespace beaconta.Infrastructure.Migrations
 {
     [DbContext(typeof(BeacontaDb))]
-    partial class BeacontaDbModelSnapshot : ModelSnapshot
+    [Migration("20251011192807_CurriculumTemplatesSubjectsAndAssignments")]
+    partial class CurriculumTemplatesSubjectsAndAssignments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -695,6 +698,9 @@ namespace beaconta.Infrastructure.Migrations
                     b.Property<int>("GradeYearId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("GradeYearId1")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
@@ -711,6 +717,8 @@ namespace beaconta.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GradeYearId");
+
+                    b.HasIndex("GradeYearId1");
 
                     b.ToTable("GradeYearFees");
                 });
@@ -1499,11 +1507,15 @@ namespace beaconta.Infrastructure.Migrations
 
             modelBuilder.Entity("beaconta.Domain.Entities.GradeYearFee", b =>
                 {
-                    b.HasOne("beaconta.Domain.Entities.GradeYear", "GradeYear")
+                    b.HasOne("beaconta.Domain.Entities.GradeYear", null)
                         .WithMany("Fees")
                         .HasForeignKey("GradeYearId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("beaconta.Domain.Entities.GradeYear", "GradeYear")
+                        .WithMany()
+                        .HasForeignKey("GradeYearId1");
 
                     b.Navigation("GradeYear");
                 });
