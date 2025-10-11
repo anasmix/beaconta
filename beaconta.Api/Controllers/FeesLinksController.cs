@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using beaconta.Application.DTOs;
+using beaconta.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace beaconta.Api.Controllers
 {
-
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Policy = "fees.links.view")]
@@ -14,7 +15,13 @@ namespace beaconta.Api.Controllers
 
         // GET: /api/feeslinks?schoolId=&yearId=&stageId=&gradeYearId=&sectionYearId=
         [HttpGet]
-        public async Task<IActionResult> Get([FromQuery] int schoolId, [FromQuery] int yearId, [FromQuery] int? stageId, [FromQuery] int? gradeYearId, [FromQuery] int? sectionYearId, CancellationToken ct)
+        public async Task<IActionResult> Get(
+            [FromQuery] int schoolId,
+            [FromQuery] int yearId,
+            [FromQuery] int? stageId,
+            [FromQuery] int? gradeYearId,
+            [FromQuery] int? sectionYearId,
+            CancellationToken ct)
             => Ok(await _svc.GetLinksAsync(schoolId, yearId, stageId, gradeYearId, sectionYearId, ct));
 
         // POST: /api/feeslinks/bulk
@@ -35,5 +42,4 @@ namespace beaconta.Api.Controllers
         public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken ct)
         { await _svc.DeleteLinkAsync(id, ct); return NoContent(); }
     }
-
 }

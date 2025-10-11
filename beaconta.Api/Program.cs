@@ -1,20 +1,18 @@
 ﻿// Program.cs
-using AutoMapper;
+using AutoMapper; 
 using beaconta.Api.Validators;
 using beaconta.Application.DTOs;
-using beaconta.Application.Interfaces;       // ✅ IGradeYearService
-using beaconta.Application.Mapping; // أو namespace الـProfile عندك
+using beaconta.Application.Interfaces;
+using beaconta.Application.Mapping;
 using beaconta.Application.Services;
 using beaconta.Domain.Entities;
 using beaconta.Infrastructure.Data;
-using beaconta.Infrastructure.Data.Seed; 
-using beaconta.Infrastructure.Services;         // ✅ GradeYearService
+using beaconta.Infrastructure.Data.Seed;
+using beaconta.Infrastructure.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
- 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
@@ -23,23 +21,24 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+// ===================================================
+// Builder
+// ===================================================
 var builder = WebApplication.CreateBuilder(args);
 
 // ================== DbContext ==================
 builder.Services.AddDbContext<BeacontaDb>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
-// ================== AutoMapper ==================
-builder.Services.AddScoped<IGradeYearService, GradeYearService>();
-
 // ================== Application Services ==================
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
-builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<ISchoolService, SchoolService>();
@@ -48,161 +47,24 @@ builder.Services.AddScoped<IStageService, StageService>();
 builder.Services.AddScoped<ISubjectsService, SubjectsService>();
 builder.Services.AddScoped<IFeesService, FeesService>();
 builder.Services.AddScoped<IFeesLinksService, FeesLinksService>();
- 
-
-// Program.cs (منطقة تسجيل الخدمات)
-
-// FluentValidation (إن كنت تستخدمه)
-builder.Services.AddScoped<IValidator<SectionYearUpsertDto>, SectionYearUpsertValidator>();
-// وإن كنت تريد التفعيل التلقائي:
-builder.Services.AddFluentValidationAutoValidation();
-
-
-// إن كنت تستخدم FluentValidation بالتجميع:
-builder.Services.AddTransient<IValidator<SectionYearUpsertDto>, SectionYearUpsertValidator>();
-
-// EF DbContext الموجود لديك
-// builder.Services.AddDbContext<BeacontaDb>(...);
-
-// AutoMapper (لو لم يكن مُسجلاً)
-builder.Services.AddAutoMapper(typeof(beaconta.Application.Mapping.TermsCalendarProfile).Assembly);
-
-
-// Services
+builder.Services.AddScoped<IGradeYearService, GradeYearService>();
+builder.Services.AddScoped<ISectionYearService, SectionYearService>();
 builder.Services.AddScoped<ITermYearService, TermYearService>();
 builder.Services.AddScoped<ICalendarEventService, CalendarEventService>();
+builder.Services.AddScoped<IFeeBundlesService, FeeBundlesService>();
 
-// Validators
-builder.Services.AddScoped<IValidator<TermYearUpsertDto>, TermYearUpsertValidator>();
-builder.Services.AddScoped<IValidator<CalendarEventUpsertDto>, CalendarEventUpsertValidator>();
+// ================== AutoMapper ==================
+builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
- 
-
-// أو لو عندك عدة Validators وتريد التحميل التلقائي من التجميعة:
-builder.Services.AddValidatorsFromAssemblyContaining<CalendarEventUpsertValidator>();
-
-// FluentValidation
+// ================== FluentValidation ==================
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<GradeYearUpsertValidator>(ServiceLifetime.Transient);
 builder.Services.AddValidatorsFromAssemblyContaining<SectionYearUpsertValidator>(ServiceLifetime.Transient);
-builder.Services.AddValidatorsFromAssemblyContaining<GradeYearUpsertValidator>();
-builder.Services.AddFluentValidationAutoValidation();
-// في حال تحب التسجيل اليدوي أيضًا (اختياري ولا يتعارض):
+builder.Services.AddValidatorsFromAssemblyContaining<TermYearUpsertValidator>(ServiceLifetime.Transient);
+builder.Services.AddValidatorsFromAssemblyContaining<CalendarEventUpsertValidator>(ServiceLifetime.Transient);
+builder.Services.AddValidatorsFromAssemblyContaining<CurriculumTemplateCreateValidator>(ServiceLifetime.Transient);
+
 builder.Services.AddTransient<IValidator<SectionYearUpsertDto>, SectionYearUpsertValidator>();
-builder.Services.AddAuthorization(o =>
-{
-    o.AddPolicy("grades.view", p => p.RequireAssertion(_ => true)); // مؤقّتًا فقط للاختبار
-    o.AddPolicy("grades.update", p => p.RequireAssertion(_ => true)); // مؤقّتًا
-    o.AddPolicy("terms.view", p => p.RequireClaim("perm", "terms.view"));
-    o.AddPolicy("terms.manage", p => p.RequireClaim("perm", "terms.manage"));
-
-    o.AddPolicy("calendar.view", p => p.RequireClaim("perm", "calendar.view"));
-    o.AddPolicy("calendar.manage", p => p.RequireClaim("perm", "calendar.manage"));
-
-    // إن أردت school-years:
-    o.AddPolicy("schoolyears.view", p => p.RequireClaim("perm", "schoolyears.view"));
-    o.AddPolicy("schoolyears.manage", p => p.RequireClaim("perm", "schoolyears.manage"));
-});
-// ===== Authorization Policies =====
-builder.Services.AddAuthorization(options =>
-{
-    // قراءة Claim "permissions" (JWT عندك يحتوي قائمة Permissions)
-    const string perm = "permissions";
-
-    // عرض الروابط
-    options.AddPolicy("fees.links.view", policy =>
-        policy.RequireAssertion(ctx =>
-            ctx.User.IsInRole("Admin") ||
-            ctx.User.HasClaim(perm, "link-fees-curricula") ||
-            ctx.User.HasClaim(perm, "finance-link") ||
-            ctx.User.HasClaim(perm, "feeslinks.view")
-        )
-    );
-
-    // إنشاء/تعديل/حذف الروابط (اختياري لو كنت تستخدمها)
-    options.AddPolicy("fees.links.manage", policy =>
-        policy.RequireAssertion(ctx =>
-            ctx.User.IsInRole("Admin") ||
-            ctx.User.HasClaim(perm, "link-fees-curricula") ||
-            ctx.User.HasClaim(perm, "feeslinks.create") ||
-            ctx.User.HasClaim(perm, "feeslinks.update") ||
-            ctx.User.HasClaim(perm, "feeslinks.delete")
-        )
-    );
-
-    // استعلام الحزم/البنود (لو محمي)
-    options.AddPolicy("fees.catalog.view", policy =>
-        policy.RequireAssertion(ctx =>
-            ctx.User.IsInRole("Admin") ||
-            ctx.User.HasClaim(perm, "finance-link") ||
-            ctx.User.HasClaim(perm, "fees.view") ||
-            ctx.User.HasClaim(perm, "fees.catalog.view")
-        )
-    );
-});
-
-
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("terms.view", p => p.RequireAssertion(ctx =>
-        ctx.User.IsInRole("admin") ||
-        ctx.User.HasClaim("permissions", "terms.view") ||
-        ctx.User.HasClaim("permissions", "terms-calendar")  // ← مفتاحك القديم
-    ));
-
-    options.AddPolicy("terms.manage", p => p.RequireAssertion(ctx =>
-        ctx.User.IsInRole("admin") ||
-        ctx.User.HasClaim("permissions", "terms.manage") ||
-        ctx.User.HasClaim("permissions", "terms-calendar") // لو كنت تستخدم نفس المفتاح للإدارة
-    ));
-});
-
-
-JwtSecurityTokenHandler.DefaultMapInboundClaims = false; // مهم جدًا: لا تغيّر أسماء الـ claim types
-
-static bool HasPerm(ClaimsPrincipal user, params string[] anyOf)
-{
-    // كل permission كـ claim مستقل اسمه "permissions"
-    var perms = user.FindAll("permissions")
-                    .Select(c => c.Value)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-    if (user.IsInRole("admin")) return true; // admin bypass
-    return anyOf.Any(p => perms.Contains(p));
-}
-
-builder.Services.AddAuthorization(options =>
-{
-    // شاشة "تحديد الفصول والتقويم"
-    options.AddPolicy("terms.view", policy =>
-        policy.RequireAssertion(ctx => HasPerm(ctx.User,
-            "terms.view",          // الشكل القياسي إن تبنيته لاحقًا
-            "terms-calendar"       // المفتاح الموجود في التوكن الحالي
-        )));
-
-    options.AddPolicy("terms.manage", policy =>
-        policy.RequireAssertion(ctx => HasPerm(ctx.User,
-            "terms.manage",
-            "terms-calendar"       // لو تستخدم نفس المفتاح للإدارة
-        )));
-
-    options.AddPolicy("calendar.view", policy =>
-        policy.RequireAssertion(ctx => HasPerm(ctx.User,
-            "calendar.view",
-            "terms-calendar"
-        )));
-
-    options.AddPolicy("calendar.manage", policy =>
-        policy.RequireAssertion(ctx => HasPerm(ctx.User,
-            "calendar.manage",
-            "terms-calendar"
-        )));
-});
-// خدمات الدومين/الأعمال
-builder.Services.AddScoped<IGradeYearService, GradeYearService>();
-
-// باقي خدماتك كما هي...
-builder.Services.AddScoped<ISectionYearService, SectionYearService>();
 
 // ================== Controllers & JSON ==================
 builder.Services.AddControllers()
@@ -213,18 +75,8 @@ builder.Services.AddControllers()
         opt.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("grades.view", p => p.RequireClaim("permissions", "grades.view"));
-    options.AddPolicy("grades.update", p => p.RequireClaim("permissions", "grades.update"));
-});
-
-builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
-
-builder.Services.AddEndpointsApiExplorer();
-
 // ================== Swagger + JWT Support ==================
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Beaconta API", Version = "v1" });
@@ -239,16 +91,12 @@ builder.Services.AddSwaggerGen(c =>
         Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
     };
     c.AddSecurityDefinition("Bearer", jwtScheme);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        [jwtScheme] = new List<string>()
-    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement { [jwtScheme] = new List<string>() });
 });
 
-// AutoMapper: امسح كل محاولات تسجيل قديمة، واستخدم هذه
-//builder.Services.AddAutoMapper(typeof(beaconta.Application.Mapping.MappingProfile).Assembly);
-
 // ================== JWT ==================
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
+
 var jwt = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -264,61 +112,140 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!)),
             RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
         };
-
         o.Events = new JwtBearerEvents
         {
-            OnAuthenticationFailed = ctx =>
-            {
-                Console.WriteLine("JWT Error: " + ctx.Exception.Message);
-                return Task.CompletedTask;
-            },
-            OnChallenge = ctx =>
-            {
-                Console.WriteLine("JWT Challenge: " + ctx.ErrorDescription);
-                return Task.CompletedTask;
-            }
+            OnAuthenticationFailed = ctx => { Console.WriteLine("JWT Error: " + ctx.Exception.Message); return Task.CompletedTask; },
+            OnChallenge = ctx => { Console.WriteLine("JWT Challenge: " + ctx.ErrorDescription); return Task.CompletedTask; }
         };
     });
 
 // ================== CORS ==================
 builder.Services.AddCors(opt =>
 {
-    opt.AddPolicy("AllowAll", p => p
-        .AllowAnyOrigin()
-        .AllowAnyHeader()
-        .AllowAnyMethod());
+    opt.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-// ================== Seed + Policies ==================
-// ملاحظة: نكوّن ServiceProvider مؤقت فقط للسيد، بعدها نولّد السياسات من جدول Permissions
-List<string> perms;
+// ===================================================
+// Seed permissions BEFORE AddAuthorization
+// ===================================================
+List<string> allPermissionKeys;
 using (var scope = builder.Services.BuildServiceProvider().CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BeacontaDb>();
 
-    // ✅ Seed القائمة + الصلاحيات المرتبطة (ستُنشئ Permissions لو ناقصة)
     await MenuSeed.SeedMenuAsync(db);
 
-    // تأكد أن صلاحيات "grades.*" موجودة؛ إن ما كانت، أضفها هنا كحد أدنى:
-    string[] gradePerms = new[] { "grades.view", "grades.create", "grades.update", "grades.delete", "grades.export" };
+    string[] gradePerms = { "grades.view", "grades.create", "grades.update", "grades.delete", "grades.export" };
     foreach (var key in gradePerms)
-    {
         if (!await db.Permissions.AnyAsync(p => p.Key == key))
-        {
             db.Permissions.Add(new Permission { Key = key, Name = key, Category = "Academic", CreatedBy = "system" });
-        }
-    }
+
+    string[] curriculaPerms =
+    {
+        "curricula.manage",
+        "curricula.templates.create",
+        "curricula.templates.update",
+        "curricula.templates.delete",
+        "curricula.templates.view"
+    };
+    foreach (var key in curriculaPerms)
+        if (!await db.Permissions.AnyAsync(p => p.Key == key))
+            db.Permissions.Add(new Permission { Key = key, Name = key, Category = "Academic", CreatedBy = "system" });
+
     await db.SaveChangesAsync();
 
-    // ✅ اجلب كل المفاتيح لتعريف السياسات
-    perms = await db.Permissions.AsNoTracking().Select(p => p.Key).ToListAsync();
+    allPermissionKeys = await db.Permissions.AsNoTracking()
+        .Select(p => p.Key)
+        .ToListAsync();
 }
 
-// أضف كل السياسات بناءً على جدول Permissions
+// ================== Authorization ==================
+// يقرأ: permissions (claim متعددة أو JSON Array أو نص بفواصل) + perm (قديم) + يتجاوز للأدمِن
+static bool HasPerm(ClaimsPrincipal user, params string[] anyOf)
+{
+    if (user.IsInRole("admin") || user.IsInRole("Admin")) return true;
+
+    var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    // permissions claims (قد تكون عناصر متعددة أو Array واحدة أو CSV)
+    foreach (var c in user.FindAll("permissions"))
+    {
+        var v = c.Value?.Trim();
+        if (string.IsNullOrEmpty(v)) continue;
+
+        if (v.StartsWith("[") && v.EndsWith("]"))
+        {
+            try
+            {
+                var arr = JsonSerializer.Deserialize<string[]>(v);
+                if (arr != null) foreach (var p in arr) if (!string.IsNullOrWhiteSpace(p)) set.Add(p.Trim());
+            }
+            catch { /* ignore */ }
+        }
+        else if (v.Contains(','))
+        {
+            foreach (var p in v.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                set.Add(p.Trim());
+        }
+        else
+        {
+            set.Add(v);
+        }
+    }
+
+    // perm (قديم)
+    foreach (var c in user.FindAll("perm"))
+        if (!string.IsNullOrWhiteSpace(c.Value)) set.Add(c.Value.Trim());
+
+    return anyOf.Any(p => set.Contains(p));
+}
+
 builder.Services.AddAuthorization(options =>
 {
-    foreach (var key in perms)
-        options.AddPolicy(key, policy => policy.RequireClaim("permissions", key));
+    options.AddPolicy("fees.catalog.view", policy =>
+    policy.RequireAssertion(ctx => HasPerm(ctx.User, "fees.view", "fees.catalog.view", "finance-link")));
+
+    // أمثلة عامة
+    options.AddPolicy("grades.view", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "grades.view")));
+    options.AddPolicy("grades.update", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "grades.update")));
+    options.AddPolicy("fees.bundles.manage", policy =>
+     policy.RequireAssertion(ctx => HasPerm(ctx.User,
+         "fees.bundles.manage",  // لو أضفتها في جدول Permissions
+         "finance-link",         // إن أردت السماح لهذا المفتاح أيضًا
+         "link-fees-curricula"   // أو نفس مفتاح شاشة الربط
+     )));
+    // Terms / Calendar
+    options.AddPolicy("terms.view", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "terms.view", "terms-calendar")));
+    options.AddPolicy("terms.manage", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "terms.manage", "terms-calendar")));
+    options.AddPolicy("calendar.view", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "calendar.view", "terms-calendar")));
+    options.AddPolicy("calendar.manage", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "calendar.manage", "terms-calendar")));
+
+    // School Years
+    options.AddPolicy("schoolyears.view", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "schoolyears.view")));
+    options.AddPolicy("schoolyears.manage", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "schoolyears.manage")));
+
+    // Fees / Links
+    options.AddPolicy("fees.links.view", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "feeslinks.view", "finance-link", "link-fees-curricula")));
+    options.AddPolicy("fees.links.manage", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "feeslinks.create", "feeslinks.update", "feeslinks.delete", "finance-link", "link-fees-curricula")));
+    options.AddPolicy("fees.catalog.view", p => p.RequireAssertion(ctx => HasPerm(ctx.User, "fees.view", "fees.catalog.view", "finance-link")));
+
+    // ✅ المناهج (يشمل مفاتيح بديلة وقديمة)
+    options.AddPolicy("curricula.manage", p => p.RequireAssertion(ctx => HasPerm(ctx.User,
+        "curricula.manage",
+        "curricula.templates.create", "curricula.templates.update", "curricula.templates.delete",
+        "subjects-curricula.create", "subjects-curricula.update", "subjects-curricula.delete",
+        "link-fees-curricula"
+    )));
+
+    options.AddPolicy("curricula.templates.create", p => p.RequireAssertion(ctx => HasPerm(ctx.User,
+        "curricula.templates.create", "curricula.manage", "subjects-curricula.create")));
+
+    // سياسات ديناميكية من جدول Permissions (منع تكرار)
+    foreach (var key in allPermissionKeys.Distinct(StringComparer.OrdinalIgnoreCase))
+    {
+        if (!options.GetPolicyNames().Contains(key, StringComparer.OrdinalIgnoreCase))
+            options.AddPolicy(key, p => p.RequireAssertion(ctx => HasPerm(ctx.User, key)));
+    }
 });
 
 // ================== Build ==================
@@ -334,28 +261,22 @@ app.UseSwaggerUI(c =>
 
 // ================== Static Files ==================
 app.MapGet("/", () => Results.Redirect("/login.html"));
-app.UseDefaultFiles(new DefaultFilesOptions
-{
-    DefaultFileNames = new List<string> { "login.html" }
-});
+app.UseDefaultFiles(new DefaultFilesOptions { DefaultFileNames = new List<string> { "login.html" } });
 app.UseStaticFiles();
 
 // ================== Middlewares ==================
 app.UseRouting();
 app.UseCors("AllowAll");
 
-// Debug Claims (للتشخيص فقط أثناء التطوير)
+// تشخيص: اطبع الـClaims وسياسات القرار
 app.Use(async (context, next) =>
 {
-    if (context.User.Identity?.IsAuthenticated ?? false)
+    Console.WriteLine(context.User?.Identity?.IsAuthenticated == true ? "=== Authenticated ===" : "=== Anonymous ===");
+
+    if (context.User?.Identity?.IsAuthenticated == true)
     {
-        Console.WriteLine("=== Claims from JWT ===");
-        foreach (var claim in context.User.Claims)
-            Console.WriteLine($"{claim.Type} = {claim.Value}");
-    }
-    else
-    {
-        Console.WriteLine("=== No User Authenticated ===");
+        foreach (var c in context.User.Claims)
+            Console.WriteLine($"CLAIM => {c.Type} = {c.Value}");
     }
     await next();
 });
@@ -363,8 +284,31 @@ app.Use(async (context, next) =>
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Endpoint تشخيصي سريع لمعرفة السماح بمنشأ المناهج
+app.MapGet("/debug/curricula-manage", (ClaimsPrincipal user) =>
+{
+    var ok = HasPerm(user,
+        "curricula.manage",
+        "curricula.templates.create", "curricula.templates.update", "curricula.templates.delete",
+        "subjects-curricula.create", "subjects-curricula.update", "subjects-curricula.delete",
+        "link-fees-curricula"
+    );
+    return Results.Json(new { canManageCurricula = ok });
+}).RequireAuthorization();
+
 // ================== Controllers ==================
 app.MapControllers();
 
 // ================== Run ==================
 app.Run();
+
+// ===== Helper extension =====
+internal static class AuthorizationOptionsExtensions
+{
+    public static IEnumerable<string> GetPolicyNames(this Microsoft.AspNetCore.Authorization.AuthorizationOptions opts)
+        => opts.GetType()
+               .GetProperty("PolicyMap", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+               .GetValue(opts) is IDictionary<string, object> map
+                    ? map.Keys
+                    : Array.Empty<string>();
+}

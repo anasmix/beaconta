@@ -1,7 +1,4 @@
-﻿// =================================
-// Services/FeesLinksService.cs
-// =================================
-using AutoMapper;
+﻿using AutoMapper;
 using beaconta.Application.DTOs;
 using beaconta.Application.Interfaces;
 using beaconta.Domain.Entities;
@@ -23,14 +20,15 @@ public class FeesLinksService : IFeesLinksService
     public async Task<IReadOnlyList<FeeLinkDto>> GetLinksAsync(
         int schoolId, int yearId, int? stageId, int? gradeYearId, int? sectionYearId, CancellationToken ct = default)
     {
-        // join منطقي لإرجاع الحقول المعروضة في الواجهة
         var q =
             from l in _db.FeeLinks.AsNoTracking()
             join gy in _db.GradeYears.AsNoTracking() on l.GradeYearId equals gy.Id
             join y in _db.Years.AsNoTracking() on gy.YearId equals y.Id
             join s in _db.Stages.AsNoTracking() on gy.StageId equals s.Id
+            join subj in _db.Subjects.AsNoTracking() on l.SubjectId equals subj.Id
+            join fb in _db.FeeBundles.AsNoTracking() on l.FeeBundleId equals fb.Id
             where gy.SchoolId == schoolId && y.Id == yearId
-            select new { l, gy, y, s };
+            select new { l, gy, y, s, subj, fb };
 
         if (stageId.HasValue) q = q.Where(t => t.s.Id == stageId.Value);
         if (gradeYearId.HasValue) q = q.Where(t => t.gy.Id == gradeYearId.Value);
@@ -38,8 +36,8 @@ public class FeesLinksService : IFeesLinksService
 
         var raw = await q.ToListAsync(ct);
 
-        // كاش الحزم لحساب itemsCount/total
-        var bundleIds = raw.Select(t => t.l.FeeBundleId).Distinct().ToList();
+        // حمّل عناصر الحزم لحساب ItemsCount/Total بكفاءة
+        var bundleIds = raw.Select(t => t.fb.Id).Distinct().ToList();
         var bundles = await _db.FeeBundles
             .Include(b => b.Items)
             .AsNoTracking()
@@ -49,8 +47,7 @@ public class FeesLinksService : IFeesLinksService
         var list = raw.Select(t =>
         {
             var l = t.l;
-            var b = bundles.GetValueOrDefault(l.FeeBundleId);
-
+            var b = bundles.GetValueOrDefault(t.fb.Id);
             var itemsCount = b?.Items.Count ?? 0;
             var total = b?.Items.Sum(i => i.Amount) ?? 0m;
 
@@ -62,32 +59,33 @@ public class FeesLinksService : IFeesLinksService
                 GradeYearId: l.GradeYearId,
                 SectionYearId: l.SectionYearId,
                 SubjectId: l.SubjectId,
-                SubjectName: l.SubjectName ?? "",
+                SubjectName: l.SubjectName ?? t.subj.Name,
                 FeeBundleId: l.FeeBundleId,
-                BundleName: l.BundleName ?? (b?.Name ?? ""),
+                BundleName: l.BundleName ?? (b?.Name ?? t.fb.Name),
                 ItemsCount: itemsCount,
                 Total: total,
                 EffectiveFrom: l.EffectiveFrom,
                 Status: l.Status,
-                SchoolName: l.SchoolName ?? "",
+                SchoolName: l.SchoolName ?? "",   // يمكن لاحقًا جلبها من جدول Schools لو أردت
                 YearName: l.YearName ?? (t.y.Name ?? ""),
-                StageName: l.StageName ?? (t.s.Name),
+                StageName: l.StageName ?? t.s.Name,
                 GradeYearName: l.GradeYearName ?? t.gy.Name,
-                SectionName: l.SectionName ?? ""
+                SectionName: l.SectionName ?? ""  // أو انضمام لاسم الشعبة لو لزم
             );
-        }).ToList();
+        })
+        .OrderByDescending(x => x.Id)
+        .ToList();
 
         return list;
     }
 
     public async Task CreateLinksBulkAsync(CreateLinksBulkRequest req, CancellationToken ct = default)
     {
-        // تماسك السياق
         var gy = await _db.GradeYears.AsNoTracking()
             .Where(g => g.Id == req.GradeYearId
-                        && g.SchoolId == req.SchoolId
-                        && g.YearId == req.YearId
-                        && g.StageId == req.StageId)
+                     && g.SchoolId == req.SchoolId
+                     && g.YearId == req.YearId
+                     && g.StageId == req.StageId)
             .Select(g => new { g.Id, g.Name, g.SchoolId, g.YearId, g.StageId })
             .FirstOrDefaultAsync(ct)
             ?? throw new KeyNotFoundException("GradeYear mismatch.");
@@ -114,14 +112,14 @@ public class FeesLinksService : IFeesLinksService
             .FirstOrDefaultAsync(ct)
             ?? throw new KeyNotFoundException("Bundle not found.");
 
-        var subjects = await _db.Subjects.AsNoTracking()
+        var subs = await _db.Subjects.AsNoTracking()
             .Where(s => req.SubjectIds.Contains(s.Id))
             .Select(s => new { s.Id, s.Name })
             .ToListAsync(ct);
 
-        foreach (var sub in subjects)
+        var toAdd = new List<FeeLink>();
+        foreach (var sub in subs.DistinctBy(x => x.Id))
         {
-            // الفهرس الفريد (GradeYearId, SectionYearId, SubjectId) يمنع التكرار
             var exists = await _db.FeeLinks.AnyAsync(x =>
                 x.GradeYearId == gy.Id &&
                 x.SectionYearId == sec.Id &&
@@ -129,16 +127,15 @@ public class FeesLinksService : IFeesLinksService
 
             if (exists) continue;
 
-            _db.FeeLinks.Add(new FeeLink
+            toAdd.Add(new FeeLink
             {
                 GradeYearId = gy.Id,
                 SectionYearId = sec.Id,
                 SubjectId = sub.Id,
                 FeeBundleId = bundle.Id,
                 EffectiveFrom = req.EffectiveFrom,
-                Status = req.Status,
-
-                // Cache لأسماء العرض
+                Status = string.IsNullOrWhiteSpace(req.Status) ? "Draft" : req.Status,
+                // Cache
                 YearName = yName,
                 StageName = sName,
                 GradeYearName = gy.Name,
@@ -148,7 +145,11 @@ public class FeesLinksService : IFeesLinksService
             });
         }
 
-        await _db.SaveChangesAsync(ct);
+        if (toAdd.Count > 0)
+        {
+            _db.FeeLinks.AddRange(toAdd);
+            await _db.SaveChangesAsync(ct);
+        }
     }
 
     public async Task UpdateLinkAsync(int id, UpdateFeeLinkRequest req, CancellationToken ct = default)
@@ -156,7 +157,7 @@ public class FeesLinksService : IFeesLinksService
         var link = await _db.FeeLinks.FirstOrDefaultAsync(l => l.Id == id, ct)
                    ?? throw new KeyNotFoundException("Link not found");
 
-        if (req.Status != null) link.Status = req.Status;
+        if (req.Status is not null) link.Status = req.Status;
         if (req.EffectiveFrom.HasValue) link.EffectiveFrom = req.EffectiveFrom;
 
         await _db.SaveChangesAsync(ct);

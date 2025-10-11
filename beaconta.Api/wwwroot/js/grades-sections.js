@@ -1,4 +1,3 @@
-// /js/grades-sections.js
 (function () {
     'use strict';
     const $ = jQuery;
@@ -27,15 +26,18 @@
 
     // ================== HTTP ==================
     function getToken() { return localStorage.getItem('token'); }
+
     async function http(method, url, body, opts = {}) {
         const headers = { 'Accept': 'application/json' };
         if (!(body instanceof FormData)) headers['Content-Type'] = 'application/json';
         const tok = getToken(); if (tok) headers['Authorization'] = `Bearer ${tok}`;
 
         const res = await fetch(url, {
-            method, headers,
+            method,
+            headers,
             body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
-            credentials: 'include', ...opts
+            credentials: 'include',
+            ...opts
         });
 
         const ct = res.headers.get('content-type') || '';
@@ -53,6 +55,40 @@
         }
         if (!ct.includes('application/json')) return res;
         return res.status === 204 ? null : res.json();
+    }
+
+    // ========= Fallback helpers for current year (NEW) =========
+    async function tryGetJson(url) {
+        try {
+            const res = await http('GET', url);
+            return res ?? null;
+        } catch (err) {
+            if (String(err?.message || '').includes('404')) return null;
+            return null; // نتسامح مع الأخطاء هنا كي نكمل المرشحين الآخرين
+        }
+    }
+
+    // يحاول عدّة مسارات شائعة لقراءة السنة الحالية، ويدعم أشكال استجابة مختلفة
+    async function fetchCurrentYear(branchId /* optional */) {
+        const candidates = [
+            ENDPOINTS.schoolYearsCurrent(branchId || undefined),
+            `${API_BASE}/schoolyears/current${branchId ? `?branchId=${branchId}` : ''}`,
+            `${API_BASE}/years/current${branchId ? `?branchId=${branchId}` : ''}`,
+            `${API_BASE}/year/current${branchId ? `?branchId=${branchId}` : ''}`
+        ];
+        for (const url of candidates) {
+            const j = await tryGetJson(url);
+            if (!j) continue;
+
+            const id =
+                (typeof j === 'number' && j) ||
+                j?.id ||
+                j?.data?.id ||
+                (Array.isArray(j) && j[0]?.id) ||
+                null;
+            if (id) return Number(id);
+        }
+        return null;
     }
 
     // ================== Cache ==================
@@ -99,7 +135,7 @@
         },
         deleteGrade: async (id) => await http('DELETE', ENDPOINTS.grade(id)),
 
-        // YearId الصحيح (فرعي/عمومي)
+        // YearId الصحيح (فرعي/عمومي) — محدث ليستخدم fetchCurrentYear
         getCurrentYearIdForSchool: async (schoolId) => {
             let sc = SCHOOLS_BY_ID[String(schoolId)];
             if (!sc || !sc.branchId) sc = await api.getSchool(schoolId).catch(() => sc);
@@ -109,16 +145,18 @@
                 const branches = await api.getBranchesForSchool(schoolId);
                 if (Array.isArray(branches) && branches.length === 1) branchId = branches[0].id;
             }
-            if (!branchId) {
-                const g = await http('GET', ENDPOINTS.schoolYearsCurrent());
-                return g?.id;
-            }
-            const y = await http('GET', ENDPOINTS.schoolYearsCurrent(branchId));
-            return y?.id;
+
+            // 1) جرّب بالفرع
+            let y = await fetchCurrentYear(branchId || undefined);
+            if (y) return y;
+
+            // 2) العام
+            y = await fetchCurrentYear(undefined);
+            return y ?? null;
         },
         getCurrentYearIdGlobal: async () => {
-            const y = await http('GET', ENDPOINTS.schoolYearsCurrent());
-            return y?.id;
+            const y = await fetchCurrentYear(undefined);
+            return y ?? null;
         },
 
         // Sections
@@ -152,7 +190,7 @@
     let STAGE_NAME_BY_ID = {};
     const stageName = id => STAGE_NAME_BY_ID[String(id)] || (STAGES.find(x => x.id == id)?.name) || '—';
 
-    // السنة الحالية في الشارة — مع تصحيح قيمة yearId إن كانت "كود" وليس معرف
+    // السنة الحالية في الشارة — مع تصحيح yearId إن كانت "كود" وليس معرف
     async function renderYearBadge() {
         let yid = window.__APP__?.yearId;
         if (!yid || isLikelyYearCode(yid)) {
@@ -162,10 +200,16 @@
             `<span class="chip"><i class="bi bi-info-circle"></i> السنة الحالية: <b class="ms-1">${esc(String(yid ?? '—'))}</b></span>`
         );
     }
+
+    // ✅ تعتبر القيم التي تبدو "كود سنة" كـ (2024 أو "2024/2025") غير صالحة كـ DB Id
     function isLikelyYearCode(v) {
         const s = String(v ?? '').trim();
-        return !s || s.includes('/') || Number(s) >= 1900;
+        if (!s) return true;
+        if (s.includes('/')) return true;
+        const n = Number(s);
+        return Number.isFinite(n) && n >= 1900;
     }
+
     async function resolveYearId(schoolId) {
         if (schoolId) {
             const y = await api.getCurrentYearIdForSchool(Number(schoolId));
@@ -257,6 +301,9 @@
     let dt;
     let _currentGradeCapacity = 0;
 
+    // ✅ معرّف السنة المُحلول (DB Id) ليُستخدم في الإرسال دائمًا
+    let RESOLVED_YEAR_ID = null;
+
     async function loadAllStages() {
         STAGES_ALL = await api.getStages(null).catch(() => []);
         STAGE_NAME_BY_ID = {};
@@ -298,16 +345,16 @@
         $filterStageId.trigger('change.select2');
     }
 
-    // CSS: تكبير مودال الصف + تمرير مريح
+    // CSS: تكبير مودال الصف + تمرير مريح  (إصلاح المسافات الخاطئة)
     if (!document.getElementById('grade-modal-comfy-style')) {
         const st = document.createElement('style');
         st.id = 'grade-modal-comfy-style';
         st.textContent = `
-      #gradeModal .modal-dialog { max-width: 980px; width: 95vw; }
-      @media (min-width: 1400px) { #gradeModal .modal-dialog { max-width: 1100px; } }
-      #gradeModal .modal-body { max-height: calc(100vh - 220px); overflow: auto; }
-      #gradeModal .modal-content { border-radius: 14px; }
-    `;
+            #gradeModal .modal-dialog { max-width: 980px; width: 95vw; }
+            @media (min-width: 1400px) { #gradeModal .modal-dialog { max-width: 1100px; } }
+            #gradeModal .modal-body { max-height: calc(100vh - 220px); overflow: auto; }
+            #gradeModal .modal-content { border-radius: 14px; }
+        `;
         document.head.appendChild(st);
     }
 
@@ -366,10 +413,10 @@
             $select.val(String(branchId)).trigger('change.select2');
             if (branches.length === 1) {
                 $select.prop('disabled', true);
-                $select.next('.select2-container .select2-selection').addClass('bg-light');
+                $select.next('.select2-container').find('.select2-selection').addClass('bg-light');
             } else {
                 $select.prop('disabled', false);
-                $select.next('.select2-container .select2-selection').removeClass('bg-light');
+                $select.next('.select2-container').find('.select2-selection').removeClass('bg-light');
             }
         }
 
@@ -382,13 +429,17 @@
     // ================== Sections Preview Cache ==================
     const _SECTIONS_PREVIEW_CACHE = new Map();
 
-    // ✅ الآن ترجع أيضًا usedCapacity لحساب "المتاح"
+    // يعيد أيضًا usedCapacity لحساب "المتاح"
+    // يعيد أيضًا usedCapacity لحساب "المتاح"
     async function fetchSectionsPreview(gradeId) {
         if (_SECTIONS_PREVIEW_CACHE.has(gradeId)) return _SECTIONS_PREVIEW_CACHE.get(gradeId);
 
         const list = await api.listSections(gradeId).catch(() => []);
         const names = (list || []).map(s => s?.name).filter(Boolean);
-        const preview = names.slice(0, 3);
+
+        // لا تقصّ إلى 3 — أعِد جميع الأسماء
+        const preview = names;  // ← التعديل
+
         const usedCapacity = (list || []).reduce((sum, s) => sum + (Number(s.capacity) || 0), 0);
 
         const result = { sectionsPreview: preview, sectionsCount: names.length, usedCapacity };
@@ -396,7 +447,8 @@
         return result;
     }
 
-    // ✅ helper لإجمالي الرسوم
+
+    // helper لإجمالي الرسوم
     function totalFeesOf(r) {
         if (Array.isArray(r?.fees) && r.fees.length) {
             return r.fees.reduce((s, f) => s + (Number(f.amount) || 0), 0);
@@ -417,7 +469,6 @@
                 const used = Number(usedCapacity) || 0;
                 r.available = (totalCap - used);
 
-                // حضّر إجمالي الرسوم للحقل إن أردت استخدامه لاحقاً
                 r._totalFees = totalFeesOf(r);
             } catch { /* ignore */ }
         }
@@ -483,8 +534,6 @@
                     { data: 'shift', render: v => v === 'Morning' ? 'صباحي' : 'مسائي' },
                     { data: 'gender', render: v => v === 'Mixed' ? 'مختلط' : (v === 'Boys' ? 'بنين' : 'بنات') },
                     { data: 'capacity', className: 'text-mono', render: v => numFmt(v || 0) },
-
-                    // ✅ المتاح بعد الإثراء
                     {
                         data: null,
                         className: 'text-mono',
@@ -496,20 +545,13 @@
                                 : txt;
                         }
                     },
-
-                    // ✅ إجمالي الرسوم (مجموع fees أو tuition)
                     { data: null, className: 'text-mono', render: r => numFmt(totalFeesOf(r)) },
-
-                    // الشُّعب كبادجات
                     {
                         data: null,
                         className: 'sections-col',
                         render: r => renderGradeSectionCombinedBadges(gradeNameOf(r), r.sectionsPreview)
                     },
-                    // # المعرف
                     { data: null, className: 'text-mono', render: (_, _t, r) => r.id },
-
-                    // الإجراءات
                     {
                         data: null,
                         orderable: false,
@@ -644,12 +686,13 @@
         $notes.val(g?.notes || '');
     }
 
+    // ✅ ترجيح استخدام معرّف السنة المُحلول (RESOLVED_YEAR_ID) أولًا
     function mapGradeDto() {
         return {
             id: Number($gradeYearId.val() || 0) || 0,
             schoolId: Number($schoolId.val() || 0),
             stageId: Number($stageId.val() || 0),
-            yearId: Number(window.__APP__?.yearId || 0),
+            yearId: Number(RESOLVED_YEAR_ID || window.__APP__?.yearId || 0),
             name: ($gradeName.val() || '').trim(),
             shift: $shift.val(),
             gender: $gender.val(),
@@ -675,6 +718,14 @@
                 $schoolId.val(String(sid)).trigger('change');
                 enableStageSelect();
                 await fillBranchUIForSchool(sid);
+            }
+
+            // ✅ حسم/تحديث معرّف السنة الحقيقي (DB Id) عند فتح المودال
+            try {
+                const sidForYear = Number($filterSchoolId.val() || $schoolId.val() || 0) || undefined;
+                RESOLVED_YEAR_ID = await resolveYearId(sidForYear);
+            } catch {
+                RESOLVED_YEAR_ID = null;
             }
 
             if (id) {
@@ -715,20 +766,20 @@
     function addFeeRow(item = { type: 'Tuition', name: '', amount: 0 }) {
         const idx = Date.now();
         const tr = $(/*html*/`
-      <tr data-row="${idx}">
-        <td>
-          <select class="form-select form-select-sm fee-type">
-            <option value="Tuition"${item.type === 'Tuition' ? ' selected' : ''}>رسوم أساسية</option>
-            <option value="Books"${item.type === 'Books' ? ' selected' : ''}>كتب</option>
-            <option value="Transport"${item.type === 'Transport' ? ' selected' : ''}>نقل</option>
-            <option value="Other"${item.type === 'Other' ? ' selected' : ''}>أخرى</option>
-          </select>
-        </td>
-        <td><input class="form-control form-control-sm fee-name" value="${esc(item.name || '')}" placeholder="الوصف"></td>
-        <td style="width:160px"><input type="number" step="0.01" class="form-control form-control-sm fee-amount" value="${item.amount || 0}"></td>
-        <td><button type="button" class="btn btn-sm btn-outline-danger fee-del"><i class="bi bi-x"></i></button></td>
-      </tr>
-    `);
+            <tr data-row="${idx}">
+                <td>
+                    <select class="form-select form-select-sm fee-type">
+                        <option value="Tuition" ${item.type === 'Tuition' ? ' selected' : ''}>رسوم أساسية</option>
+                        <option value="Books" ${item.type === 'Books' ? ' selected' : ''}>كتب</option>
+                        <option value="Transport" ${item.type === 'Transport' ? ' selected' : ''}>نقل</option>
+                        <option value="Other" ${item.type === 'Other' ? ' selected' : ''}>أخرى</option>
+                    </select>
+                </td>
+                <td><input class="form-control form-control-sm fee-name" value="${esc(item.name || '')}" placeholder="الوصف"></td>
+                <td style="width:160px"><input type="number" step="0.01" class="form-control form-control-sm fee-amount" value="${item.amount || 0}"></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger fee-del"><i class="bi bi-x"></i></button></td>
+            </tr>
+        `);
         tr.find('.fee-amount').on('input', recomputeFeesTotal);
         tr.find('.fee-del').on('click', () => { tr.remove(); recomputeFeesTotal(); });
         $feesBody.append(tr);
@@ -774,13 +825,32 @@
         if (!dto.stageId) { toast('اختر مرحلة', 'error'); return; }
         if (!dto.name) { toast('اسم الصف مطلوب', 'error'); return; }
 
+        // ======== تحديد yearId الصالح (DB Id) بشكل صارم ========
         let yearId = dto.yearId;
+        if (isLikelyYearCode(yearId)) {
+            yearId = null;
+        }
+
         try {
-            if (!yearId || isLikelyYearCode(yearId)) {
-                yearId = await resolveYearId(dto.schoolId);
+            if (!yearId) {
+                // جرّب أولًا بفرع المدرسة إن وُجد
+                const sidForYear = Number(dto.schoolId || 0) || undefined;
+                let branchId = null;
+                if (sidForYear) {
+                    const sc = SCHOOLS_BY_ID[String(sidForYear)];
+                    branchId = sc?.branchId ?? sc?.BranchId ?? sc?.branch?.id ?? sc?.Branch?.Id ?? null;
+                }
+                yearId = await fetchCurrentYear(branchId || undefined);
+                if (!yearId) yearId = await fetchCurrentYear(undefined); // العام
             }
-        } catch { /* ignore */ }
-        if (!yearId) { toast('تعذر تحديد السنة الدراسية الحالية.', 'error'); return; }
+        } catch {
+            yearId = null;
+        }
+
+        if (!yearId || isLikelyYearCode(yearId)) {
+            toast('تعذر تحديد السنة الدراسية الحالية (معرّف). الرجاء تفعيل سنة للفرع أو تحديد المدرسة بشكل صحيح.', 'error');
+            return;
+        }
 
         const fees = collectFees()
             .map(f => ({ type: String(f.type || 'Other'), name: (f.name || '').trim() || null, amount: Number(f.amount || 0) }))
@@ -812,6 +882,7 @@
             await filterTable();
 
             CURRENT_GRADE_ID = null;
+            RESOLVED_YEAR_ID = null; // تنظيف الحالة
             $gradeYearId.val('');
         } catch (err) {
             let msg = String(err?.message || err);
@@ -938,19 +1009,19 @@
             : '<span class="badge bg-secondary">مقفلة</span>';
 
         return `
-      <tr data-id="${s.id || ''}" data-status="${isActive ? 'Active' : 'Inactive'}">
-        <td class="text-mono">${idx}</td>
-        <td class="sec-status">${statusBadge}</td>
-        <td><input class="form-control form-control-sm sec-name" value="${esc(s.name || '')}" placeholder="أ/ب/ج"></td>
-        <td style="width:120px"><input type="number" min="1" class="form-control form-control-sm sec-capacity" value="${s.capacity || 0}"></td>
-        <td><input class="form-control form-control-sm sec-teacher" value="${esc(s.teacher || '')}" placeholder="مربي الفصل"></td>
-        <td><input class="form-control form-control-sm sec-notes" value="${esc(s.notes || '')}" placeholder="ملاحظات"></td>
-        <td class="text-nowrap" style="width:160px">
-          <button type="button" class="btn ${lockClass} btn-sm sec-lock" title="${lockTitle}"><i class="bi ${lockIcon}"></i></button>
-          <button type="button" class="btn btn-sm btn-outline-primary sec-save"><i class="bi bi-check2"></i></button>
-          <button type="button" class="btn btn-sm btn-outline-danger sec-del"><i class="bi bi-trash"></i></button>
-        </td>
-      </tr>`;
+            <tr data-id="${s.id || ''}" data-status="${isActive ? 'Active' : 'Inactive'}">
+                <td class="text-mono">${idx}</td>
+                <td class="sec-status">${statusBadge}</td>
+                <td><input class="form-control form-control-sm sec-name" value="${esc(s.name || '')}" placeholder="أ/ب/ج"></td>
+                <td style="width:120px"><input type="number" min="1" class="form-control form-control-sm sec-capacity" value="${s.capacity || 0}"></td>
+                <td><input class="form-control form-control-sm sec-teacher" value="${esc(s.teacher || '')}" placeholder="مربي الفصل"></td>
+                <td><input class="form-control form-control-sm sec-notes" value="${esc(s.notes || '')}" placeholder="ملاحظات"></td>
+                <td class="text-nowrap" style="width:160px">
+                    <button type="button" class="btn ${lockClass} btn-sm sec-lock" title="${lockTitle}"><i class="bi ${lockIcon}"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-primary sec-save"><i class="bi bi-check2"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger sec-del"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>`;
     }
     function readSectionRow($tr) {
         return {
@@ -996,15 +1067,15 @@
                 await fillBranchUIForSchool(Number(sidFromQuery));
             }
 
-            // CSS بسيط للّفّ (wrap) لبادجات الشُّعب
+            // CSS بسيط للّفّ (wrap) لبادجات الشُّعب — مع تصحيح white-space
             if (!document.getElementById('grades-badges-wrap-style')) {
                 const st = document.createElement('style');
                 st.id = 'grades-badges-wrap-style';
                 st.textContent = `
-          .badges-wrap { display:flex; flex-wrap:wrap; gap:.25rem .25rem; }
-          .badge-grade { white-space:normal; }
-          #tblYears td.sections-col .badge { white-space:normal; }
-        `;
+                    .badges-wrap { display:flex; flex-wrap:wrap; gap:.25rem .25rem; }
+                    .badge-grade { white-space: normal; }
+                    #tblYears td.sections-col .badge { white-space: normal; }
+                `;
                 document.head.appendChild(st);
             }
 

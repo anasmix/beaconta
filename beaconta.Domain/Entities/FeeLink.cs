@@ -4,7 +4,7 @@
     {
         public int Id { get; set; }
 
-        // المفاتيح الدنيا للمستوى
+        // مفاتيح أدنى مستوى
         public int GradeYearId { get; set; }
         public int SectionYearId { get; set; }
 
@@ -15,7 +15,7 @@
         public DateOnly? EffectiveFrom { get; set; }
         public string Status { get; set; } = "Draft";
 
-        // حقول كاش للعرض السريع (اختيارية)
+        // حقول كاش اختيارية للعرض
         public string? SchoolName { get; set; }
         public string? YearName { get; set; }
         public string? StageName { get; set; }

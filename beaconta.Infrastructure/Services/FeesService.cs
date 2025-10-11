@@ -1,94 +1,95 @@
-﻿// ===============================
-// Services/FeesService.cs (fixed to match your DTO signatures)
-// ===============================
-using AutoMapper;
+﻿// beaconta.Infrastructure/Services/FeesService.cs
 using beaconta.Application.DTOs;
 using beaconta.Application.Interfaces;
 using beaconta.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace beaconta.Application.Services;
-
-public class FeesService : IFeesService
+namespace beaconta.Application.Services
 {
-    private readonly BeacontaDb _db;
-    private readonly IMapper _map;
-
-    public FeesService(BeacontaDb db, IMapper map)
+    public class FeesService : IFeesService
     {
-        _db = db; _map = map;
-    }
+        private readonly BeacontaDb _db;
+        public FeesService(BeacontaDb db) => _db = db;
 
-    public async Task<IReadOnlyList<FeeItemCatalogDto>> GetFeeItemsAsync(CancellationToken ct = default)
-    {
-        return await _db.FeeItems.AsNoTracking()
-            .OrderBy(x => x.ItemCode)
-            .Select(x => new FeeItemCatalogDto(x.Id, x.ItemCode, x.Name))
-            .ToListAsync(ct);
-    }
+        // يدعم q (بحث بالاسم/الكود) + take (حد أقصى للنتائج)
+        public async Task<IReadOnlyList<FeeItemCatalogDto>> GetFeeItemsAsync(string? q, int take = 20, CancellationToken ct = default)
+        {
+            var query = _db.FeeItems.AsNoTracking().AsQueryable();
 
-    public async Task<IReadOnlyList<FeeBundleSummaryDto>> GetBundlesAsync(int? gradeYearId, CancellationToken ct = default)
-    {
-        // رتّب أولاً على b.Id (أو أي عمود آخر)، ثم أسقِط إلى DTO
-        var data = await _db.FeeBundles
-            .AsNoTracking()
-            .OrderByDescending(b => b.Id) // <-- مهم: الترتيب على العمود نفسه
-            .Select(b => new
+            if (!string.IsNullOrWhiteSpace(q))
             {
-                b.Id,
-                b.BundleCode,
-                b.Name,
-                ItemsCount = b.Items.Count,
-                Total = b.Items.Sum(i => (decimal?)i.Amount) ?? 0m
-            })
-            .ToListAsync(ct);
+                q = q.Trim();
+                query = query.Where(x =>
+                    x.Name.Contains(q) ||
+                    x.ItemCode.Contains(q));
+            }
 
-        // إسقاط إلى FeeBundleSummaryDto بعد خروجك للذاكرة
-        return data
-            .Select(x => new FeeBundleSummaryDto(
+            take = Math.Clamp(take, 1, 100);
+
+            return await query
+                .OrderBy(x => x.Name)
+                .Take(take)
+                .Select(x => new FeeItemCatalogDto(x.Id, x.ItemCode, x.Name))
+                .ToListAsync(ct);
+        }
+
+        public async Task<IReadOnlyList<FeeBundleSummaryDto>> GetBundlesAsync(int? gradeYearId, CancellationToken ct = default)
+        {
+            var data = await _db.FeeBundles
+                .AsNoTracking()
+                .Select(b => new
+                {
+                    b.Id,
+                    b.BundleCode,
+                    b.Name,
+                    ItemsCount = b.Items.Count,
+                    Total = b.Items.Sum(i => (decimal?)i.Amount) ?? 0m
+                })
+                .OrderByDescending(x => x.Id)
+                .ToListAsync(ct);
+
+            return data.Select(x => new FeeBundleSummaryDto(
                 x.Id,
                 x.BundleCode,
                 x.Name,
                 x.ItemsCount,
                 x.Total
-            ))
-            .ToList();
-    }
+            )).ToList();
+        }
 
+        public async Task<FeeBundleDto?> GetBundleAsync(int id, CancellationToken ct = default)
+        {
+            var bundle = await _db.FeeBundles
+                .Include(b => b.Items)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Id == id, ct);
 
-    public async Task<FeeBundleDto?> GetBundleAsync(int id, CancellationToken ct = default)
-    {
-        var b = await _db.FeeBundles
-            .Include(x => x.Items)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (bundle is null) return null;
 
-        if (b is null) return null;
+            var dict = await _db.FeeItems.AsNoTracking()
+                .ToDictionaryAsync(x => x.ItemCode, x => x.Name, ct);
 
-        var dict = await _db.FeeItems.AsNoTracking()
-            .ToDictionaryAsync(x => x.ItemCode, x => x.Name, ct);
+            var items = bundle.Items
+                .OrderBy(i => i.Id)
+                .Select(it => new FeeBundleItemDto(
+                    it.Id,
+                    it.ItemCode,
+                    dict.TryGetValue(it.ItemCode, out var nm) ? nm : null,
+                    it.Amount,
+                    it.Repeat,
+                    it.Optional,
+                    it.Note
+                ))
+                .ToList()
+                .AsReadOnly();
 
-        var items = b.Items
-            .OrderBy(i => i.Id)
-            .Select(it => new FeeBundleItemDto(
-                it.Id,
-                it.ItemCode,
-                dict.TryGetValue(it.ItemCode, out var nm) ? nm : null,
-                it.Amount,
-                it.Repeat,
-                it.Optional,
-                it.Note
-            ))
-            .ToList()
-            .AsReadOnly(); // IReadOnlyList<FeeBundleItemDto>
-
-        // matches: FeeBundleDto(int Id, string BundleCode, string Name, string? Desc, IReadOnlyList<FeeBundleItemDto> Items)
-        return new FeeBundleDto(
-            b.Id,
-            b.BundleCode,
-            b.Name,
-            b.Desc,
-            items
-        );
+            return new FeeBundleDto(
+                bundle.Id,
+                bundle.BundleCode,
+                bundle.Name,
+                bundle.Desc,
+                items
+            );
+        }
     }
 }

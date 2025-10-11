@@ -1,0 +1,12 @@
+.kpi .kpi-label{font-size:.8rem;color:#6c757d}
+.kpi .kpi-value{font-size:1.25rem;font-weight:700}
+.kpi.ok{border-inline-start:4px solid #28a745}
+.kpi.warn{border-inline-start:4px solid #ffc107}
+.kpi.err{border-inline-start:4px solid #dc3545}
+.select2-container--bootstrap-5 .select2-selection{min-height:31px}
+.sticky-footer{position:sticky;bottom:0;left:0;right:0;}
+#stickyFooter .badge{border:1px solid currentColor}
+table.dataTable tbody tr td{vertical-align:middle;}
+.badge-chip{border-radius:2rem;padding:.25rem .5rem}
+/* small panel shadows */
+.card.kpi{border-radius:1rem}

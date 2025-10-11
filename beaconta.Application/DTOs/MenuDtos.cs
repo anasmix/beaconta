@@ -1,5 +1,14 @@
-﻿namespace beaconta.Application.DTOs
+﻿// beaconta.Application/DTOs/MenuDtos.cs
+namespace beaconta.Application.DTOs
 {
+    public sealed class MenuItemActionDto
+    {
+        public string ActionKey { get; set; } = default!;
+        public string Title { get; set; } = default!;
+        public string PermissionKey { get; set; } = default!;
+        public int SortOrder { get; set; }
+    }
+
     public sealed class MenuItemDto
     {
         public string ItemKey { get; set; } = default!;
@@ -7,8 +16,7 @@
         public string? Icon { get; set; }
         public string Url { get; set; } = "#";
         public int SortOrder { get; set; }
-           // جديد (اختياري):
-    public List<MenuItemActionDto> Actions { get; set; } = new(); 
+        public List<MenuItemActionDto> Actions { get; set; } = new();
     }
 
     public sealed class MenuGroupDto

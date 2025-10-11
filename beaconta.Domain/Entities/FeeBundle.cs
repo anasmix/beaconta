@@ -1,5 +1,4 @@
-﻿// FeeBundle.cs
-namespace beaconta.Domain.Entities
+﻿namespace beaconta.Domain.Entities
 {
     public class FeeBundle : BaseEntity
     {

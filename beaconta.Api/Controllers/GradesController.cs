@@ -1,16 +1,18 @@
-﻿// Controllers/GradesController.cs
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using beaconta.Domain.Entities;
 using beaconta.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace beaconta.Api.Controllers
 {
     [ApiController]
+    [Route("api/[controller]")]                   // => api/grades
+    [Authorize(Policy = "grades.view")]           // حماية القراءة افتراضياً
     public class GradesController : ControllerBase
     {
         private readonly BeacontaDb _db;
@@ -22,7 +24,7 @@ namespace beaconta.Api.Controllers
             string gradeName, string shift, string gender,
             int capacity, int available, decimal feesTotal,
             int sectionsCount, string status,
-              List<string> sectionsPreview // 👈 جديد
+            List<string> sectionsPreview
         );
 
         public record FeeItemDto(string type, string? name, decimal amount);
@@ -42,8 +44,8 @@ namespace beaconta.Api.Controllers
         );
         public record FeeReq(string type, string? name, decimal amount);
 
-        // ===== GET /api/grades (List) =====
-        [HttpGet("/api/grades")]
+        // ===== GET /api/grades =====
+        [HttpGet]
         public async Task<IActionResult> List(
             [FromQuery] int? schoolId,
             [FromQuery] int? stageId,
@@ -74,40 +76,39 @@ namespace beaconta.Api.Controllers
                     g.Name.Contains(term) ||
                     (g.Notes ?? "").Contains(term) ||
                     g.Sections.Any(s => s.Name.Contains(term)) ||
-                    g.Sections.Any(s => (s.Teacher ?? "").Contains(term))
-                );
+                    g.Sections.Any(s => (s.Teacher ?? "").Contains(term)));
             }
+
             var rows = await qry
                 .OrderBy(g => g.StageId)
                 .ThenBy(g => g.SortOrder)
                 .ThenBy(g => g.Name)
-              .Select(g => new GradeRowDto(
-    g.Id,
-    g.SchoolId,
-    g.StageId,
-    g.YearId,
-    g.Name,
-    g.Shift,
-    g.Gender,
-    g.Capacity,
-    g.Capacity - (_db.SectionYears.Where(s => s.GradeYearId == g.Id).Sum(s => (int?)s.Capacity) ?? 0),
-    _db.GradeYearFees.Where(f => f.GradeYearId == g.Id).Sum(f => (decimal?)f.Amount) ?? 0m,
-    _db.SectionYears.Count(s => s.GradeYearId == g.Id),
-    g.Status,
-    _db.SectionYears
-        .Where(s => s.GradeYearId == g.Id)
-        .OrderBy(s => s.Name)
-        .Select(s => s.Name)
-        .ToList() // 👈 لا تأخذ 6 فقط — رجّع الكل
-))
+                .Select(g => new GradeRowDto(
+                    g.Id,
+                    g.SchoolId,
+                    g.StageId,
+                    g.YearId,
+                    g.Name,
+                    g.Shift,
+                    g.Gender,
+                    g.Capacity,
+                    g.Capacity - (_db.SectionYears.Where(s => s.GradeYearId == g.Id).Sum(s => (int?)s.Capacity) ?? 0),
+                    _db.GradeYearFees.Where(f => f.GradeYearId == g.Id).Sum(f => (decimal?)f.Amount) ?? 0m,
+                    _db.SectionYears.Count(s => s.GradeYearId == g.Id),
+                    g.Status,
+                    _db.SectionYears
+                        .Where(s => s.GradeYearId == g.Id)
+                        .OrderBy(s => s.Name)
+                        .Select(s => s.Name)
+                        .ToList()
+                ))
                 .ToListAsync(ct);
-
 
             return Ok(rows);
         }
 
         // ===== GET /api/grades/{id} =====
-        [HttpGet("/api/grades/{id:int}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct = default)
         {
             var g = await _db.GradeYears
@@ -127,59 +128,64 @@ namespace beaconta.Api.Controllers
             return Ok(dto);
         }
 
-        [HttpPatch("/api/grades/{id:int}/lock")]
+        // ===== GET /api/grades/{id}/sections  👈 مضاف (تكافؤ مع /gradeyears/{id}/sections)
+        [HttpGet("{id:int}/sections")]
+        public async Task<IActionResult> GetSections([FromRoute] int id, CancellationToken ct = default)
+        {
+            var exists = await _db.GradeYears.AsNoTracking().AnyAsync(g => g.Id == id, ct);
+            if (!exists) return NotFound(new { message = $"GradeYear #{id} غير موجود." });
+
+            var sections = await _db.SectionYears
+                .AsNoTracking()
+                .Where(s => s.GradeYearId == id)
+                .OrderBy(s => s.Name)
+                .Select(s => new
+                {
+                    id = s.Id,
+                    name = s.Name,
+                    capacity = s.Capacity,
+                    status = s.Status
+                })
+                .ToListAsync(ct);
+
+            return Ok(sections);
+        }
+
+        // ===== تغييرات الحالة (تحتاج صلاحية تحديث) =====
+        [HttpPatch("{id:int}/lock")]
+        [Authorize(Policy = "grades.update")]
         public async Task<IActionResult> LockGrade([FromRoute] int id, CancellationToken ct)
         {
             var g = await _db.GradeYears.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (g is null) return NotFound();
             g.Status = "Inactive";
-            g.UpdatedAt = DateTime.UtcNow;
+            g.UpdatedAt = System.DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
             return NoContent();
         }
 
-        [HttpPatch("/api/grades/{id:int}/unlock")]
+        [HttpPatch("{id:int}/unlock")]
+        [Authorize(Policy = "grades.update")]
         public async Task<IActionResult> UnlockGrade([FromRoute] int id, CancellationToken ct)
         {
             var g = await _db.GradeYears.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (g is null) return NotFound();
             g.Status = "Active";
-            g.UpdatedAt = DateTime.UtcNow;
+            g.UpdatedAt = System.DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
             return NoContent();
         }
 
-        //[HttpPatch("/api/grades/{gradeId:int}/sections/{id:int}/lock")]
-        //public async Task<IActionResult> LockSection(int gradeId, int id, CancellationToken ct)
-        //{
-        //    var s = await _db.SectionYears.FirstOrDefaultAsync(x => x.Id == id && x.GradeYearId == gradeId, ct);
-        //    if (s is null) return NotFound();
-        //    s.Status = "Inactive";
-        //    s.UpdatedAt = DateTime.UtcNow;
-        //    await _db.SaveChangesAsync(ct);
-        //    return NoContent();
-        //}
-
-        //[HttpPatch("/api/grades/{gradeId:int}/sections/{id:int}/unlock")]
-        //public async Task<IActionResult> UnlockSection(int gradeId, int id, CancellationToken ct)
-        //{
-        //    var s = await _db.SectionYears.FirstOrDefaultAsync(x => x.Id == id && x.GradeYearId == gradeId, ct);
-        //    if (s is null) return NotFound();
-        //    s.Status = "Active";
-        //    s.UpdatedAt = DateTime.UtcNow;
-        //    await _db.SaveChangesAsync(ct);
-        //    return NoContent();
-        //}
-
-
-
         // ===== POST /api/grades =====
-        [HttpPost("/api/grades")]
+        [HttpPost]
+        [Authorize(Policy = "grades.create")]
         public async Task<IActionResult> Create([FromBody] SaveReq req, CancellationToken ct)
         {
             var dup = await _db.GradeYears.AnyAsync(g =>
-                g.YearId == req.yearId && g.SchoolId == req.schoolId &&
-                g.StageId == req.stageId && g.Name == req.name, ct);
+                g.YearId == req.yearId &&
+                g.SchoolId == req.schoolId &&
+                g.StageId == req.stageId &&
+                g.Name == req.name, ct);
 
             if (dup)
                 return Conflict(new { code = "DUPLICATE_GRADE", message = "Grade already exists in this year/stage/school." });
@@ -218,15 +224,20 @@ namespace beaconta.Api.Controllers
         }
 
         // ===== PUT /api/grades/{id} =====
-        [HttpPut("/api/grades/{id:int}")]
+        [HttpPut("{id:int}")]
+        [Authorize(Policy = "grades.update")]
         public async Task<IActionResult> Update([FromRoute] int id, [FromBody] SaveReq req, CancellationToken ct)
         {
             var g = await _db.GradeYears.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (g is null) return NotFound();
 
             var dup = await _db.GradeYears.AnyAsync(x =>
-                x.Id != id && x.YearId == req.yearId && x.SchoolId == req.schoolId &&
-                x.StageId == req.stageId && x.Name == req.name, ct);
+                x.Id != id &&
+                x.YearId == req.yearId &&
+                x.SchoolId == req.schoolId &&
+                x.StageId == req.stageId &&
+                x.Name == req.name, ct);
+
             if (dup)
                 return Conflict(new { code = "DUPLICATE_GRADE", message = "Grade already exists in this year/stage/school." });
 
@@ -262,7 +273,8 @@ namespace beaconta.Api.Controllers
         }
 
         // ===== DELETE /api/grades/{id} =====
-        [HttpDelete("/api/grades/{id:int}")]
+        [HttpDelete("{id:int}")]
+        [Authorize(Policy = "grades.delete")]
         public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken ct)
         {
             var g = await _db.GradeYears.FirstOrDefaultAsync(x => x.Id == id, ct);

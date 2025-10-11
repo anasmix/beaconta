@@ -1,15 +1,16 @@
-// /js/fees-link.js — ربط الرسوم والمناهج (متصل بالباك-إند)
+// /js/fees-link.js — ربط الرسوم والمناهج (نسخة نهائية مع حفظ الحزم عبر API)
 (function () {
     'use strict';
     const $ = jQuery;
     const U = window.Utils;
+    const API = window.API;
 
     // عناصر DOM
     const $selBranch = $('#selBranch');
     const $selYear = $('#selYear');
     const $selStage = $('#selStage');
-    const $selGrade = $('#selGrade');
-    const $selSection = $('#selSection');
+    const $selGrade = $('#selGrade');     // GradeYear (PK)
+    const $selSection = $('#selSection'); // SectionYear (PK)
     const $selCurrTemplate = $('#selCurrTemplate');
     const $selFeeBundle = $('#selFeeBundle');
     const $selSubjects = $('#selSubjects');
@@ -23,13 +24,6 @@
     U.useLatinDigits(true);
 
     // ========= خارطة السنة (UI PK -> قيمة السنة الفعلية) =========
-    // ملاحظة: الخلفية لدينا تُرجع yearCode وليس value رقمي، لذا سنعتمد الـ PK افتراضيًا.
-    let YEAR_PARAM = {}; // مثال: { 6: 2024, 7: 2025, ... } إن توفر
-    function getYearParam() {
-        const raw = Number($selYear.val());
-        const p = YEAR_PARAM[raw];
-        return (p ?? raw);
-    }
     function getYearIdRaw() {
         const v = Number($selYear.val());
         return Number.isFinite(v) ? v : null;
@@ -38,7 +32,7 @@
     // حالة
     let state = {
         links: [],
-        bundles: [],
+        bundles: [],   // [{ id, name, items? }]
         currs: [],
         selectedSubjects: [],
         selectedBundleId: null
@@ -54,7 +48,7 @@
     function fill($sel, arr) {
         $sel.empty();
         (arr || []).forEach(x => $sel.append(new Option(x.name, x.id)));
-        $sel.trigger('change.select2'); // في حال كان مرتبط بـ select2
+        $sel.trigger('change.select2');
     }
 
     function translateRepeat(r) {
@@ -71,11 +65,9 @@
         return BRANCH_SCHOOL[branchId] ?? null;
     }
 
-    // تلوين القيم السالبة (تحذير) مع الإبقاء على القيم معروضة
+    // تلوين القيم السالبة
     function colorizeNegatives($root) {
         $root.find('tbody td').each(function () {
-            const html = this.innerHTML;
-            // استخرج أول رقم محتمل من النص دون المساس بالوسوم
             const txt = $(this).text().replace(/\s+/g, ' ').trim();
             const m = txt.match(/-?\d+([.,]\d+)?/);
             if (!m) return;
@@ -101,50 +93,33 @@
         if (!branchId || !schoolId) {
             console.warn('[loadYearsAndStagesForCurrentBranch] missing branchId/schoolId', { branchId, schoolId });
             window._FEED = { years: [], stages: [] };
-            YEAR_PARAM = {};
             return;
         }
 
-        const [years, stages, currentYear] = await Promise.all([
+        const [years, stages] = await Promise.all([
             API.get('/school-years', { branchId }),
-            API.get('/stages', { schoolId, branchId }),
-            API.get('/school-years/current', { branchId })
+            API.get('/stages', { schoolId, branchId })
         ]);
 
-        YEAR_PARAM = {};
         window._FEED = {
-            years: (years || []).map(y => {
-                // دعم حقول متعددة محتملة من API قديمة/جديدة
-                let apiYearVal =
-                    y.year ?? y.value ?? y.yearCode ?? y.code ?? y.calendarYear ?? y.calendar ?? null;
-                if (apiYearVal == null) {
-                    const m = String(y.name ?? '').match(/\d{4}/);
-                    if (m) apiYearVal = Number(m[0]);
-                }
-                if (y?.id != null && apiYearVal != null && !Number.isNaN(Number(apiYearVal))) {
-                    YEAR_PARAM[y.id] = Number(apiYearVal);
-                }
-                return { id: y.id, name: y.name ?? String(apiYearVal ?? y.id) };
-            }),
+            years: (years || []).map(y => ({ id: y.id, name: y.name ?? String(y.id) })),
             stages: (stages || []).map(s => ({ id: s.id, name: s.name }))
         };
 
-        // حدّث القوائم مع الحفاظ على الاختيار إن وُجد
         const prevYear = $selYear.val();
         const prevStage = $selStage.val();
 
         fill($selYear, window._FEED.years);
         fill($selStage, window._FEED.stages);
 
-        // افتراضي: السنة الحالية من الخادم، وإن لم تتوفر فالأول، وإلا نحافظ على السابق إن كان صالحًا
-        const defYearId =
-            (currentYear && currentYear.id != null) ? currentYear.id :
-                (window._FEED.years?.[0]?.id ?? null);
+        // اختر أحدث سنة متاحة تلقائيًا (أكبر Id)
+        const latestYearId = (window._FEED.years || [])
+            .map(y => Number(y.id)).filter(Number.isFinite).sort((a, b) => b - a)[0] ?? null;
 
         if (prevYear && $selYear.find(`option[value="${prevYear}"]`).length) {
             $selYear.val(prevYear);
-        } else if (defYearId != null) {
-            $selYear.val(defYearId);
+        } else if (latestYearId != null) {
+            $selYear.val(latestYearId);
         }
 
         if (prevStage && $selStage.find(`option[value="${prevStage}"]`).length) {
@@ -154,21 +129,16 @@
         }
     }
 
-    // ========= Boot: تحميل ثوابت من الخادم =========
+    // ========= Boot =========
     async function bootState() {
-        // الطلبات الأساسية
         try {
-            // 1) الفروع أولاً
             const branches = await API.get('/branches');
 
-            // بناء خريطة الفرع → المدرسة
             BRANCH_SCHOOL = {};
             (branches || []).forEach(b => { if (b?.id) BRANCH_SCHOOL[b.id] = b.schoolId || null; });
 
-            // خزّن النسخة الكاملة (فيها schoolName) لاستخدامها في fillSelects
             window._BRANCHES_FULL = branches || [];
 
-            // عيّن الفرع الافتراضي في السلكت قبل أي طلبات أخرى
             $selBranch.empty();
             (branches || []).forEach(b => {
                 const label = [b.schoolName, b.name].filter(Boolean).join(' — ');
@@ -176,45 +146,27 @@
             });
             if (branches?.length) $selBranch.val(branches[0].id);
 
-            // 2) حمّل سنوات/مراحل هذا الفرع فقط
             await loadYearsAndStagesForCurrentBranch();
         } catch (e) {
             console.error('Boot core failed', e);
             window._BRANCHES_FULL = [];
             window._FEED = { years: [], stages: [] };
-            YEAR_PARAM = {};
         }
 
-        // الطلبات الثانوية لا تُعطّل الشاشة
         try {
-            const yearId = getYearIdRaw(); // ✅ استخدم الـ PK
-            const [templates, bundles, feeItems] = await Promise.all([
+            const yearId = getYearIdRaw(); // ✅ PK
+            const [templates, bundles] = await Promise.all([
                 API.get('/curricula/templates', { yearId }),
-                API.get('/fees/bundles'),
-                API.get('/fees/items')
+                API.get('/fees/bundles') // ملخص (بدون items)
             ]);
 
             state.currs = templates || [];
-            // مخرجات /fees/bundles على شكل: { id, name, items: [{ itemCode, amount, repeat, optional, note }] }
-            state.bundles = (bundles || []).map(b => ({
-                id: b.id,
-                name: b.name,
-                items: (b.items || []).map(i => ({
-                    itemCode: i.itemCode,
-                    amount: i.amount,
-                    repeat: i.repeat,
-                    optional: i.optional,
-                    note: i.note
-                }))
-            }));
-
-            window._FEE_ITEMS = feeItems || [];
+            state.bundles = (bundles || []).map(b => ({ id: b.id, name: b.name })); // نحمل items لاحقًا عند الحاجة
             state.links = [];
         } catch (e) {
             console.warn('Optional feeds failed', e);
             state.currs = [];
             state.bundles = [];
-            window._FEE_ITEMS = [];
         }
     }
 
@@ -223,19 +175,16 @@
         const branches = window._BRANCHES_FULL || [];
         const { years, stages } = window._FEED;
 
-        // حافظ على الاختيارات إن وُجدت
         const prevBranch = $selBranch.val();
         const prevYear = $selYear.val();
         const prevStage = $selStage.val();
 
-        // الفروع: اعرض "المدرسة — الفرع"
         $selBranch.empty();
         branches.forEach(b => {
             const label = [b.schoolName, b.name].filter(Boolean).join(' — ');
             $selBranch.append(new Option(label, b.id));
         });
 
-        // السنوات والمراحل كما كانت
         fill($selYear, years);
         fill($selStage, stages);
 
@@ -247,7 +196,7 @@
 
         if (prevYear && $selYear.find(`option[value="${prevYear}"]`).length) {
             $selYear.val(prevYear);
-        } // وإلا فقد ضُبطت مسبقًا في loadYearsAndStagesForCurrentBranch
+        }
 
         if (prevStage && $selStage.find(`option[value="${prevStage}"]`).length) {
             $selStage.val(prevStage);
@@ -269,40 +218,37 @@
             if (!$(this).data('select2')) $(this).select2({ theme: 'bootstrap-5', width: '100%', dir: 'rtl', minimumResultsForSearch: 8 });
         });
 
-        await reloadLinksFromApi();
+        await reloadLinksFromApi(); // سيحترم شروط التوقف (لن يحضر شيء بدون شعبة)
     }
 
-    // ========= الصفوف =========
+    // ========= الصفوف (GradeYears) =========
     async function rebuildGrades() {
         const stageId = Number($selStage.val());
         const branchId = Number($selBranch.val());
         const schoolId = getSchoolIdFromBranch(branchId);
         const yearIdRaw = getYearIdRaw(); // PK للسنة
 
-        console.debug('[rebuildGrades] branchId, schoolId, stageId, yearIdRaw =', branchId, schoolId, stageId, yearIdRaw);
+        console.debug('[rebuildGrades] branchId=%s schoolId=%s stageId=%s yearId=%s',
+            branchId, schoolId, stageId, yearIdRaw);
 
-        if (!schoolId || !yearIdRaw) {
+        if (!yearIdRaw) {
             fill($selGrade, []);
             fill($selSection, []);
-            console.warn('[rebuildGrades] missing schoolId/yearIdRaw -> skip');
+            console.warn('[rebuildGrades] missing yearIdRaw -> skip');
             return;
         }
 
         let grades = [];
         try {
-            // المحاولة الأولى مع المرحلة
-            grades = await API.get('/grades', { schoolId, yearId: yearIdRaw, stageId }) || [];
+            const params = { yearId: yearIdRaw };
+            if (stageId) params.stageId = stageId;
+            if (schoolId) params.schoolId = schoolId;
 
-            // fallback: حاول بدون stageId لو رجعت فاضية
-            if (!grades.length && stageId) {
-                console.warn('[rebuildGrades] empty with stageId, retry without stageId');
-                grades = await API.get('/grades', { schoolId, yearId: yearIdRaw }) || [];
-            }
+            grades = await API.get('/gradeyears', params) || [];
         } catch (e) {
-            console.error('[rebuildGrades] GET /grades failed', e);
-            Swal.fire('خطأ', 'تعذر جلب الصفوف من الخادم.', 'error');
-            fill($selGrade, []);
-            fill($selSection, []);
+            console.error('[rebuildGrades] GET /gradeyears failed', e);
+            Swal.fire('خطأ', 'تعذر جلب الصفوف (gradeyears) من الخادم.', 'error');
+            fill($selGrade, []); fill($selSection, []);
             return;
         }
 
@@ -318,12 +264,13 @@
         }
     }
 
+    // ========= الشعب =========
     async function rebuildSections() {
         const gradeYearId = Number($selGrade.val());
         if (!gradeYearId) { fill($selSection, []); return; }
 
         try {
-            const secs = await API.get(`/grades/${gradeYearId}/sections`);
+            const secs = await API.get(`/gradeyears/${gradeYearId}/sections`);
             const items = (secs || []).map(s => ({ id: s.id, name: s.name }));
             fill($selSection, items);
 
@@ -331,7 +278,7 @@
                 console.info('[rebuildSections] no sections found for gradeYearId=', gradeYearId);
             }
         } catch (e) {
-            console.error('[rebuildSections] GET /grades/{id}/sections failed', e);
+            console.error('[rebuildSections] GET /gradeyears/{id}/sections failed', e);
             const msg = (e && e.status === 403) ? 'غير مصرح — تأكد من سياسة grades.view' : 'تعذر جلب الشعب.';
             Swal.fire('خطأ', msg, 'error');
             fill($selSection, []);
@@ -377,58 +324,76 @@
     }
 
     // ========= جدول عناصر الحزمة =========
-    function refreshBundleItemsTable() {
+    async function refreshBundleItemsTable() {
         const bundleId = $selFeeBundle.val();
         state.selectedBundleId = bundleId;
-        const bundle = state.bundles.find(b => String(b.id) === String(bundleId));
-
+        let bundle = state.bundles.find(b => String(b.id) === String(bundleId));
         $tblBundleItems.empty();
-        let sum = 0;
-        if (bundle?.items?.length) {
-            bundle.items.forEach((it, i) => {
-                sum += Number(it.amount) || 0;
-                $tblBundleItems.append(`
-          <tr>
-            <td>${i + 1}</td>
-            <td>${U.escapeHtml(it.itemCode)}</td>
-            <td>${U.money(it.amount)}</td>
-            <td>${translateRepeat(it.repeat)}</td>
-            <td>${it.optional ? 'نعم' : 'لا'}</td>
-          </tr>
-        `);
-            });
+
+        if (!bundle) {
+            $bundleTotal.text(U.money(0));
+            $('#kpiTotal').text(U.money(0));
+            $('#kpiTotalSub').text('—');
+            return;
         }
+
+        // حمّل تفاصيل الحزمة (items) عند الحاجة
+        if (!bundle.items) {
+            try {
+                const full = await API.get(`/fees/bundles/${bundle.id}`);
+                bundle = Object.assign(bundle, { items: (full?.items || []) });
+            } catch (e) {
+                console.error('Failed to load bundle details', e);
+                Swal.fire('خطأ', 'تعذر جلب تفاصيل الحزمة.', 'error');
+                $bundleTotal.text(U.money(0));
+                $('#kpiTotal').text(U.money(0));
+                $('#kpiTotalSub').text('—');
+                return;
+            }
+        }
+
+        let sum = 0;
+        (bundle.items || []).forEach((it, i) => {
+            sum += Number(it.amount) || 0;
+            $tblBundleItems.append(`
+        <tr>
+          <td>${i + 1}</td>
+          <td>${U.escapeHtml(it.itemCode)}</td>
+          <td>${U.money(it.amount)}</td>
+          <td>${translateRepeat(it.repeat)}</td>
+          <td>${it.optional ? 'نعم' : 'لا'}</td>
+        </tr>
+      `);
+        });
+
         $bundleTotal.text(U.money(sum));
         $('#kpiTotal').text(U.money(sum));
         $('#kpiTotalSub').text(bundle ? `إجمالي "${bundle.name}"` : '—');
 
-        // لون القيم السالبة (إن وجدت) بعد إعادة الرسم
         colorizeNegatives($('#tblBundleItems'));
     }
 
-    // ========= تحميل الروابط =========
+    // ========= تحميل الروابط (بدون سحب شامل) =========
     async function reloadLinksFromApi() {
         const branchId = Number($selBranch.val());
         const schoolId = getSchoolIdFromBranch(branchId);
-        const yearIdRaw = getYearIdRaw(); // PK للسنة
+        const yearIdRaw = getYearIdRaw(); // PK
         const stageId = Number($selStage.val());
         const gradeYearId = Number($selGrade.val());
         const sectionYearId = Number($selSection.val());
 
-        if (!schoolId || !yearIdRaw) {
+        if (!yearIdRaw || !gradeYearId || !sectionYearId) {
             state.links = [];
             renderLinksTable();
             return;
         }
 
-        // لا ترسل أي فلتر اختياري إلا لو مُختار بالفعل
-        const params = { schoolId, yearId: yearIdRaw };
-        if (gradeYearId) params.gradeYearId = gradeYearId;
-        if (sectionYearId) params.sectionYearId = sectionYearId;
-        if (gradeYearId && stageId) params.stageId = stageId;
+        const params = { yearId: yearIdRaw, gradeYearId, sectionYearId };
+        if (schoolId) params.schoolId = schoolId;
+        if (stageId) params.stageId = stageId;
 
         try {
-            const list = await API.get('/feeslinks', params);
+            const list = await API.get('/feeslinks', params) || [];
             state.links = (list || []).map(l => ({
                 id: l.id,
                 subjectName: l.subjectName,
@@ -440,12 +405,10 @@
                 status: l.status || 'Draft'
             }));
         } catch (e) {
-            console.error('Error: GET /feeslinks ->', e);
-            if (e && (e.status === 403 || e.status === 500)) {
-                Swal.fire('تنبيه', 'تعذر تحميل الروابط (تحقق من سياسات التفويض fees.links.view).', 'info');
-            }
+            console.error('[reloadLinksFromApi] GET /feeslinks failed', e);
             state.links = [];
         }
+
         renderLinksTable();
     }
 
@@ -455,7 +418,6 @@
         $('#kpiLinksCount').text(U.int(state.links.length));
         $('#kpiLinksSub').text(state.links.length ? 'روابط جاهزة' : '—');
 
-        // لون القيم السالبة (لو وجود عمود إجمالي سالب لسبب ما)
         colorizeNegatives($(dtLinks.table().container()));
     }
 
@@ -496,13 +458,9 @@
                 const fix = (el) => { if (el) el.textContent = U.toLatinDigits(el.textContent); };
                 fix(document.querySelector('.dataTables_info'));
                 document.querySelectorAll('.dataTables_paginate a, .dataTables_paginate span').forEach(fix);
-
-                // مهم: لا نستبدل textContent للخلايا حتى لا نمسح الوسوم، نعالج الـ HTML نفسه
                 $tblLinks.find('tbody td').each(function () {
                     this.innerHTML = U.toLatinDigits(this.innerHTML);
                 });
-
-                // تلوين القيم السالبة
                 colorizeNegatives($(dtLinks.table().container()));
             }
         });
@@ -575,7 +533,7 @@
         const bundle = state.bundles.find(b => String(b.id) === String($selFeeBundle.val()));
         const sum = (bundle?.items || []).reduce((s, it) => s + (Number(it.amount) || 0), 0);
         $('#kpiTotal').text(U.money(sum));
-        $('#kpiTotalSub').text(bundle ? `إجمالي "${bundle.name}"` : '—');
+        $('#kpiTotalSub').text(bundle ? `إجمالي "${bundle?.name}"` : '—');
     }
 
     async function assignBundleToSelectedSubjects() {
@@ -590,7 +548,7 @@
         const stageId = Number($selStage.val());
         const gradeYearId = Number($selGrade.val());
         const sectionYearId = Number($selSection.val());
-        if (!schoolId || !getYearIdRaw() || !gradeYearId || !sectionYearId) {
+        if (!getYearIdRaw() || !gradeYearId || !sectionYearId) {
             Swal.fire('بيانات غير مكتملة', 'حدد الفرع/السنة/الصف/الشعبة', 'info'); return;
         }
 
@@ -619,14 +577,9 @@
         }
     }
 
-    // ========= إنشاء حزمة جديدة (اختياري) =========
+    // ========= إنشاء/حفظ حزمة جديدة عبر API =========
     function openBundleModal() {
-        // تجهيز Select للبنود من الكتالوج
-        const $biItem = $('#biItem');
-        $biItem.empty();
-        (window._FEE_ITEMS || []).forEach(i => $biItem.append(new Option(i.name || i.itemCode || i.code, i.id)));
-        if (!$biItem.data('select2')) $biItem.select2({ theme: 'bootstrap-5', width: '100%', dir: 'rtl' });
-
+        // تفريغ وتجهيز جدول البنود المؤقتة
         const $tbody = $('#tblNewBundleItems tbody').empty();
         $('#bundleSum').text('0.00');
         $('#txtBundleName').val('');
@@ -636,73 +589,177 @@
         $('#biRepeat').val('once');
         $('#biOptional').prop('checked', false);
 
+        // تهيئة حقل اختيار البند مع جلب من الخادم + تمرير Authorization
+        const $biItem = $('#biItem');
+        if ($biItem.data('select2')) $biItem.select2('destroy');
+        $biItem.empty();
+
+        // helper: يحاول إيجاد التوكن من API._authHeader أو التخزين المحلي
+        function getAuthHeaders() {
+            if (window.API && typeof window.API._authHeader === 'function') {
+                const h = window.API._authHeader();     // يجب أن تُرجع "Bearer xxx"
+                if (h) return { Authorization: h };
+            }
+            const t = localStorage.getItem('jwt')
+                || localStorage.getItem('token')
+                || sessionStorage.getItem('jwt')
+                || window._JWT
+                || '';
+            return t ? { Authorization: 'Bearer ' + t } : {};
+        }
+
+        $biItem.select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            dir: 'rtl',
+            placeholder: 'اختر البند',
+            minimumInputLength: 0,
+            ajax: {
+                url: '/api/fees/items',
+                delay: 250,
+                // أهم جزء: إضافة الهيدر Authorization للطلب
+                transport: function (params, success, failure) {
+                    const xhr = $.ajax({
+                        url: params.url,
+                        method: 'GET',
+                        data: params.data,
+                        headers: Object.assign(
+                            { 'X-Requested-With': 'XMLHttpRequest' },
+                            getAuthHeaders()
+                        )
+                    });
+                    xhr.then(success).catch(failure);
+                    return xhr;
+                },
+                data: params => ({ q: params.term ?? '', take: 20 }),
+                processResults: data => ({
+                    results: (data || []).map(x => ({
+                        id: x.itemCode, // نخزن الكود مباشرة
+                        text: `${x.name}${x.itemCode ? ' — ' + x.itemCode : ''}`
+                    }))
+                })
+            },
+            dropdownParent: $('#mdlBundle')
+        });
+
+        // مصفوفة البنود المؤقتة داخل المودال
         const tempItems = [];
 
         function redrawTemp() {
             $tbody.empty();
             let sum = 0;
             tempItems.forEach((it, idx) => {
-                const def = (window._FEE_ITEMS || []).find(x => String(x.id) === String(it.itemId));
-                const label = def?.name || def?.itemCode || it.itemId;
                 sum += Number(it.amount) || 0;
                 $tbody.append(`
-          <tr data-i="${idx}">
-            <td>${idx + 1}</td>
-            <td>${U.escapeHtml(label)}</td>
-            <td>${U.money(it.amount)}</td>
-            <td>${translateRepeat(it.repeat)}</td>
-            <td>${it.optional ? 'نعم' : 'لا'}</td>
-            <td>${U.escapeHtml(it.note || '')}</td>
-            <td><button class="btn btn-sm btn-outline-danger bi-del"><i class="bi bi-x-lg"></i></button></td>
-          </tr>
-        `);
+                <tr data-i="${idx}">
+                  <td>${idx + 1}</td>
+                  <td>${U.escapeHtml(it.itemLabel)}</td>
+                  <td>${U.money(it.amount)}</td>
+                  <td>${translateRepeat(it.repeat)}</td>
+                  <td>${it.optional ? 'نعم' : 'لا'}</td>
+                  <td>${U.escapeHtml(it.note || '')}</td>
+                  <td><button class="btn btn-sm btn-outline-danger bi-del"><i class="bi bi-x-lg"></i></button></td>
+                </tr>
+            `);
             });
             $('#bundleSum').text(U.money(sum));
-
-            // تلوين السوالب (لو حدثت)
             colorizeNegatives($('#tblNewBundleItems'));
         }
 
+        // إضافة بند للحزمة المؤقتة
         $('#btnAddBundleItem').off('click').on('click', function () {
-            const itemId = $('#biItem').val();
+            const itemCode = $biItem.val();                                  // الكود مباشرة
+            const itemLabel = $biItem.find(':selected').text() || itemCode;  // نص العرض
             const amount = Number($('#biAmount').val());
             const repeat = $('#biRepeat').val();
             const optional = $('#biOptional').is(':checked');
             const note = $('#biNote').val();
-            if (!itemId || !amount) { Swal.fire('بيانات ناقصة', 'اختر بندًا وحدد قيمة.', 'info'); return; }
-            tempItems.push({ itemId, amount, repeat, optional, note });
+
+            if (!itemCode || !amount) {
+                Swal.fire('بيانات ناقصة', 'اختر بندًا وحدد قيمة.', 'info');
+                return;
+            }
+
+            tempItems.push({ itemCode, itemLabel, amount, repeat, optional, note });
             redrawTemp();
-            $('#biAmount').val(''); $('#biNote').val(''); $('#biOptional').prop('checked', false);
+
+            // تهيئة للحقل بعد الإضافة
+            $('#biAmount').val('');
+            $('#biNote').val('');
+            $('#biOptional').prop('checked', false);
+            // نُبقي اختيار البند كما هو لسرعة الإدخال المتكرر
         });
 
+        // حذف بند من القائمة المؤقتة
         $('#tblNewBundleItems').off('click', '.bi-del').on('click', '.bi-del', function () {
             const idx = Number($(this).closest('tr').data('i'));
-            tempItems.splice(idx, 1); redrawTemp();
+            tempItems.splice(idx, 1);
+            redrawTemp();
         });
 
-        // حفظ (محلي أو عبر API لو وفّرت POST /api/fees/bundles)
+        // حفظ الحزمة عبر الـ API (جديد)
         $('#btnSaveBundle').off('click').on('click', async function () {
             const name = ($('#txtBundleName').val() || '').trim();
             const desc = $('#txtBundleDesc').val() || '';
             if (!name) { Swal.fire('اسم الحزمة مطلوب', 'اكتب اسمًا واضحًا.', 'info'); return; }
             if (!tempItems.length) { Swal.fire('لا توجد بنود', 'أضف بندًا واحدًا على الأقل.', 'info'); return; }
 
-            // بدون POST فعلي للحزم: نخزّنها محليًا فقط لكي تُستخدم فورًا
-            const toItems = tempItems.map(x => {
-                const def = (window._FEE_ITEMS || []).find(fi => String(fi.id) === String(x.itemId));
-                return {
-                    itemCode: def?.itemCode || def?.code || String(x.itemId),
-                    amount: x.amount, repeat: x.repeat, optional: !!x.optional, note: x.note || ''
-                };
-            });
-            const newBundle = { id: U.uid('B'), name, items: toItems, desc };
-            state.bundles.unshift(newBundle);
+            // نرسل itemCode مباشرة — هذا ما يتوقعه الباك-إند
+            const payload = {
+                name,
+                desc,
+                items: tempItems.map(x => ({
+                    itemCode: x.itemCode,
+                    amount: x.amount,
+                    repeat: x.repeat,
+                    optional: !!x.optional,
+                    note: x.note || ''
+                }))
+            };
 
-            $selFeeBundle.append(new Option(newBundle.name, newBundle.id, true, true)).trigger('change');
-            bootstrap.Modal.getInstance(document.getElementById('mdlBundle'))?.hide();
-            Swal.fire('تم', 'حُفِظت الحزمة محليًا (لا يوجد EndPoint للحفظ).', 'success');
+            try {
+                U.setProgress(40, 'جارٍ حفظ الحزمة...');
+                // Endpoint الحفظ: POST /api/feebundles (يرجع FeeBundleDto)
+                const saved = await API.post('/feebundles', payload);
+
+                // أدرج أو حدّث في الحالة مع العناصر الراجعة من السيرفر
+                const newBundle = {
+                    id: saved.id,
+                    name: saved.name,
+                    items: (saved.items || []).map(i => ({
+                        itemCode: i.itemCode,
+                        amount: i.amount,
+                        repeat: i.repeat,
+                        optional: i.optional,
+                        note: i.note
+                    }))
+                };
+                // إن كانت موجودة بنفس المعرف استبدلها، وإلا أضف للأعلى
+                const idx = state.bundles.findIndex(b => Number(b.id) === Number(newBundle.id));
+                if (idx >= 0) state.bundles[idx] = newBundle; else state.bundles.unshift(newBundle);
+
+                // تحديث قائمة الحزم واختيار الجديدة
+                if ($selFeeBundle.find(`option[value="${newBundle.id}"]`).length === 0) {
+                    $selFeeBundle.prepend(new Option(newBundle.name, newBundle.id, true, true));
+                }
+                $selFeeBundle.val(newBundle.id).trigger('change');
+
+                // إغلاق المودال وتحديث الجداول
+                bootstrap.Modal.getInstance(document.getElementById('mdlBundle'))?.hide();
+                await refreshBundleItemsTable();
+                refreshKpis();
+                U.setProgress(100, 'تم');
+                Swal.fire('تم', 'تم حفظ الحزمة بنجاح.', 'success');
+            } catch (e) {
+                console.error('Save bundle failed', e);
+                const msg = e?.responseJSON?.message || e?.message || 'تعذر حفظ الحزمة.';
+                Swal.fire('خطأ', msg, 'error');
+            } finally {
+                setTimeout(() => U.setProgress(0, 'جاهز'), 400);
+            }
         });
 
+        // إظهار المودال
         new bootstrap.Modal('#mdlBundle').show();
     }
 
@@ -731,12 +788,11 @@
             Swal.fire('لا توجد روابط', 'أنشئ روابط أولًا قبل النشر.', 'info'); return;
         }
         try {
-            U.setProgress(40, 'جارٍ النشر...');
-            // (لا يوجد EndPoint نشر مستقل، نعيد التحميل فقط)
+            U.setProgress(40, 'جارٍ تحديث الحالة...');
             await reloadLinksFromApi();
             U.setProgress(100, 'تم');
             Swal.fire('تم', 'تم تحديث الحالة من الخادم.', 'success');
-        } catch (e) { console.error(e); Swal.fire('خطأ', 'تعذر النشر.', 'error'); }
+        } catch (e) { console.error(e); Swal.fire('خطأ', 'تعذر التحديث.', 'error'); }
         finally { setTimeout(() => U.setProgress(0, 'جاهز'), 400); }
     }
 
@@ -754,21 +810,6 @@
         const csv = U.toCSV(rows);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         U.download('fees-links.csv', blob);
-    }
-
-    async function reloadLinksTableAndKpis() {
-        await reloadLinksFromApi();
-        refreshKpis();
-    }
-
-    function refreshKpis() {
-        $('#kpiLinksCount').text(U.int(state.links.length));
-        $('#kpiLinksSub').text(state.links.length ? 'روابط جاهزة للنشر/التعديل' : '—');
-
-        const bundle = state.bundles.find(b => String(b.id) === String($selFeeBundle.val()));
-        const sum = (bundle?.items || []).reduce((s, it) => s + (Number(it.amount) || 0), 0);
-        $('#kpiTotal').text(U.money(sum));
-        $('#kpiTotalSub').text(bundle ? `إجمالي "${bundle.name}"` : '—');
     }
 
     // ========= Wizard مبسط =========
@@ -831,18 +872,21 @@
     // ========= Bind events =========
     function bindEvents() {
         $selBranch.on('change', async () => {
-            await loadYearsAndStagesForCurrentBranch(); // ✅ حمّل سنة/مرحلة الفرع أولاً
-            await rebuildGrades();        // 👈 أعد الصفوف وفق المدرسة الجديدة
-            await rebuildSections();      // ثم الشعب
-            await reloadSubjects();       // ثم المواد
+            await loadYearsAndStagesForCurrentBranch();
+            await rebuildGrades();
+            await rebuildSections();
+            await reloadSubjects();
             await reloadLinksTableAndKpis();
         });
 
         $selYear.on('change', async () => {
-            const yearId = getYearIdRaw(); // ✅ استخدم PK
+            const yearId = getYearIdRaw(); // ✅ PK
             try { state.currs = await API.get('/curricula/templates', { yearId }) || []; } catch { }
             $selCurrTemplate.empty(); fill($selCurrTemplate, state.currs);
-            await reloadSubjects(); await reloadLinksTableAndKpis();
+            await rebuildGrades();       // السنة تغيّرت => أعد جلب الصفوف (gradeyears)
+            await rebuildSections();
+            await reloadSubjects();
+            await reloadLinksTableAndKpis();
         });
 
         $selStage.on('change', async () => { await rebuildGrades(); await reloadLinksTableAndKpis(); });
@@ -871,11 +915,11 @@
     // ========= Init =========
     async function init() {
         await bootState();
-        ensureLinksTable();        // 👈 أنشئ الجدول أولاً
-        await fillSelects();       // هذا سيجلب البيانات ويعرضها الآن
+        ensureLinksTable();
+        await fillSelects();
         refreshSubjectsTable();
         if (state.bundles?.length) $selFeeBundle.val(state.bundles[0].id).trigger('change');
-        refreshBundleItemsTable();
+        await refreshBundleItemsTable();
         refreshKpis();
         U.setProgress(0, 'جاهز');
     }

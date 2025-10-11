@@ -1,5 +1,4 @@
-﻿// Infrastructure/Data/Seed/FeesPermissionsSeed.cs
-using beaconta.Domain.Entities;
+﻿using beaconta.Domain.Entities;
 using beaconta.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
