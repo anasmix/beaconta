@@ -38,9 +38,14 @@ namespace beaconta.Infrastructure.Data
         public DbSet<SectionYear> SectionYears => Set<SectionYear>();
 
 
+        public DbSet<Subject> Subjects => Set<Subject>();
+        public DbSet<FeeItemCatalog> FeeItems => Set<FeeItemCatalog>();
+        public DbSet<FeeBundle> FeeBundles => Set<FeeBundle>();
+        public DbSet<FeeBundleItem> FeeBundleItems => Set<FeeBundleItem>();
+        public DbSet<CurriculumTemplate> CurriculumTemplates => Set<CurriculumTemplate>();
+        public DbSet<FeeLink> FeeLinks => Set<FeeLink>();
 
-
-
+ 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -69,6 +74,20 @@ namespace beaconta.Infrastructure.Data
                 .IsUnique();
 
 
+            // BeacontaDb.OnModelCreating
+            modelBuilder.Entity<FeeBundleItem>()
+                .Property(x => x.Amount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<GradeYear>()
+                .Property(x => x.Tuition)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<GradeYearFee>()
+                .Property(x => x.Amount)
+                .HasPrecision(18, 2);
+
+ 
             modelBuilder.Entity<SectionYear>(e =>
             {
                 e.Property(x => x.Status)

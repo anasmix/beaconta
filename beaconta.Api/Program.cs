@@ -4,6 +4,7 @@ using beaconta.Api.Validators;
 using beaconta.Application.DTOs;
 using beaconta.Application.Interfaces;       // ✅ IGradeYearService
 using beaconta.Application.Mapping; // أو namespace الـProfile عندك
+using beaconta.Application.Services;
 using beaconta.Domain.Entities;
 using beaconta.Infrastructure.Data;
 using beaconta.Infrastructure.Data.Seed; 
@@ -44,9 +45,13 @@ builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<ISchoolService, SchoolService>();
 builder.Services.AddScoped<IBranchService, BranchService>();
 builder.Services.AddScoped<IStageService, StageService>();
+builder.Services.AddScoped<ISubjectsService, SubjectsService>();
+builder.Services.AddScoped<IFeesService, FeesService>();
+builder.Services.AddScoped<IFeesLinksService, FeesLinksService>();
+ 
 
 // Program.cs (منطقة تسجيل الخدمات)
- 
+
 // FluentValidation (إن كنت تستخدمه)
 builder.Services.AddScoped<IValidator<SectionYearUpsertDto>, SectionYearUpsertValidator>();
 // وإن كنت تريد التفعيل التلقائي:
@@ -86,6 +91,8 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddTransient<IValidator<SectionYearUpsertDto>, SectionYearUpsertValidator>();
 builder.Services.AddAuthorization(o =>
 {
+    o.AddPolicy("grades.view", p => p.RequireAssertion(_ => true)); // مؤقّتًا فقط للاختبار
+    o.AddPolicy("grades.update", p => p.RequireAssertion(_ => true)); // مؤقّتًا
     o.AddPolicy("terms.view", p => p.RequireClaim("perm", "terms.view"));
     o.AddPolicy("terms.manage", p => p.RequireClaim("perm", "terms.manage"));
 
@@ -95,6 +102,43 @@ builder.Services.AddAuthorization(o =>
     // إن أردت school-years:
     o.AddPolicy("schoolyears.view", p => p.RequireClaim("perm", "schoolyears.view"));
     o.AddPolicy("schoolyears.manage", p => p.RequireClaim("perm", "schoolyears.manage"));
+});
+// ===== Authorization Policies =====
+builder.Services.AddAuthorization(options =>
+{
+    // قراءة Claim "permissions" (JWT عندك يحتوي قائمة Permissions)
+    const string perm = "permissions";
+
+    // عرض الروابط
+    options.AddPolicy("fees.links.view", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole("Admin") ||
+            ctx.User.HasClaim(perm, "link-fees-curricula") ||
+            ctx.User.HasClaim(perm, "finance-link") ||
+            ctx.User.HasClaim(perm, "feeslinks.view")
+        )
+    );
+
+    // إنشاء/تعديل/حذف الروابط (اختياري لو كنت تستخدمها)
+    options.AddPolicy("fees.links.manage", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole("Admin") ||
+            ctx.User.HasClaim(perm, "link-fees-curricula") ||
+            ctx.User.HasClaim(perm, "feeslinks.create") ||
+            ctx.User.HasClaim(perm, "feeslinks.update") ||
+            ctx.User.HasClaim(perm, "feeslinks.delete")
+        )
+    );
+
+    // استعلام الحزم/البنود (لو محمي)
+    options.AddPolicy("fees.catalog.view", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole("Admin") ||
+            ctx.User.HasClaim(perm, "finance-link") ||
+            ctx.User.HasClaim(perm, "fees.view") ||
+            ctx.User.HasClaim(perm, "fees.catalog.view")
+        )
+    );
 });
 
 

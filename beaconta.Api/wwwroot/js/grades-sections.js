@@ -6,23 +6,26 @@
     // ================== REST ==================
     const API_BASE = '/api';
     const ENDPOINTS = {
+        // مدارس/مراحل/فروع
         schools: `${API_BASE}/schools?simple=true`,
         stages: (schoolId) => `${API_BASE}/stages?schoolId=${schoolId || ''}`,
+        school: (id) => `${API_BASE}/schools/${id}`,
+        branchesBySchool: (schoolId) => `${API_BASE}/branches?schoolId=${schoolId || ''}`,
 
-        grades: `${API_BASE}/grades`,
-        grade: (id) => `${API_BASE}/grades/${id}`,
-        // داخل const ENDPOINTS = { ... }
-        gradeView: (id) => `${API_BASE}/grades/view/${id}`, // مسار احتياطي إن كان الباك إند يستعمل /view/{id}
+        // الصفوف السنوية GradeYears
+        grades: `${API_BASE}/gradeyears`,
+        grade: (id) => `${API_BASE}/gradeyears/${id}`,
 
-        // الشُعب
-        sections: (gradeId) => `${API_BASE}/grades/${gradeId}/sections`,
-        section: (gradeId, id) => `${API_BASE}/grades/${gradeId}/sections/${id}`,
+        // السنة الحالية (عمومًا أو لفرع معيّن)
+        schoolYearsCurrent: (branchId) =>
+            `${API_BASE}/school-years/current${branchId ? `?branchId=${branchId}` : ''}`,
 
-        // ✅ مسارات قفل/فتح الشُّعب (إضافة جديدة)
-        sectionLock: (gradeId, id) => `${API_BASE}/grades/${gradeId}/sections/${id}/lock`,
-        sectionUnlock: (gradeId, id) => `${API_BASE}/grades/${gradeId}/sections/${id}/unlock`,
+        // الشُّعب السنوية SectionYears
+        sections: (gradeYearId) => `${API_BASE}/sectionyears/by-grade/${gradeYearId}`,
+        section: (_gradeId, id) => `${API_BASE}/sectionyears/${id}`,
     };
 
+    // ================== HTTP ==================
     function getToken() { return localStorage.getItem('token'); }
     async function http(method, url, body, opts = {}) {
         const headers = { 'Accept': 'application/json' };
@@ -30,11 +33,9 @@
         const tok = getToken(); if (tok) headers['Authorization'] = `Bearer ${tok}`;
 
         const res = await fetch(url, {
-            method,
-            headers,
+            method, headers,
             body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
-            credentials: 'include',
-            ...opts
+            credentials: 'include', ...opts
         });
 
         const ct = res.headers.get('content-type') || '';
@@ -54,63 +55,168 @@
         return res.status === 204 ? null : res.json();
     }
 
+    // ================== Cache ==================
+    let SCHOOLS_BY_ID = Object.create(null);
+
     const api = {
-        getSchools: async () => await http('GET', ENDPOINTS.schools).catch(() => []),
+        // مدارس
+        getSchools: async () => {
+            const list = await http('GET', ENDPOINTS.schools).catch(() => []);
+            SCHOOLS_BY_ID = Object.create(null);
+            (list || []).forEach(s => {
+                const bid = s.branchId ?? s.BranchId ?? s.branchID ?? s.branch_id ?? s.branch?.id ?? s.Branch?.Id;
+                SCHOOLS_BY_ID[String(s.id)] = { ...s, branchId: bid ?? null };
+            });
+            return list;
+        },
+        getSchool: async (id) => {
+            const s = await http('GET', ENDPOINTS.school(id));
+            const bid = s.branchId ?? s.BranchId ?? s.branchID ?? s.branch_id ?? s.branch?.id ?? s.Branch?.Id;
+            const prev = SCHOOLS_BY_ID[String(id)] ?? {};
+            SCHOOLS_BY_ID[String(id)] = { ...prev, ...s, branchId: bid ?? null };
+            return SCHOOLS_BY_ID[String(id)];
+        },
+        getBranchesForSchool: async (schoolId) =>
+            await http('GET', ENDPOINTS.branchesBySchool(schoolId)).catch(() => []),
+
+        // مراحل
         getStages: async (schoolId) => await http('GET', ENDPOINTS.stages(schoolId)).catch(() => []),
 
+        // GradeYears
         listGrades: async (params) => {
             const q = new URLSearchParams();
+            if (params?.yearId) q.set('yearId', params.yearId);
             if (params?.schoolId) q.set('schoolId', params.schoolId);
             if (params?.stageId) q.set('stageId', params.stageId);
-            if (params?.yearId) q.set('yearId', params.yearId);
-            if (params?.status) q.set('status', params.status);
-            if (params?.shift) q.set('shift', params.shift);
             if (params?.q) q.set('q', params.q);
-            const url = `${ENDPOINTS.grades}?${q}`;
-            return await http('GET', url);
+            return await http('GET', `${ENDPOINTS.grades}?${q}`);
         },
         getGrade: async (id) => await http('GET', ENDPOINTS.grade(id)),
         createGrade: async (dto) => await http('POST', ENDPOINTS.grades, dto),
-        updateGrade: async (id, dto) => await http('PUT', ENDPOINTS.grade(id), dto),
+        updateGrade: async (id, dto) => {
+            const body = { ...dto, id: (dto?.id ?? id) };
+            return await http('PUT', ENDPOINTS.grade(id), body);
+        },
         deleteGrade: async (id) => await http('DELETE', ENDPOINTS.grade(id)),
 
-        // === الشُعب (تم الحقن التلقائي لـ gradeYearId) ===
-        listSections: async (gradeId) => await http('GET', ENDPOINTS.sections(gradeId)).catch(() => []),
+        // YearId الصحيح (فرعي/عمومي)
+        getCurrentYearIdForSchool: async (schoolId) => {
+            let sc = SCHOOLS_BY_ID[String(schoolId)];
+            if (!sc || !sc.branchId) sc = await api.getSchool(schoolId).catch(() => sc);
 
-        // NOTE: الباك إند يطلب GradeYearId>0؛ نستخدم gradeId من المسار ونرسله باسم gradeYearId.
-        createSection: async (gradeId, dto) =>
-            await http('POST', ENDPOINTS.sections(gradeId), { gradeYearId: gradeId, ...dto }),
-
-        updateSection: async (gradeId, id, dto) =>
-            await http('PUT', ENDPOINTS.section(gradeId, id), { gradeYearId: Number(gradeId), ...dto }),
-
-        deleteSection: async (gradeId, id) => await http('DELETE', ENDPOINTS.section(gradeId, id)),
-
-        // ✅ قفل/فتح الشُّعب (إضافات جديدة)
-        toggleSectionLock: async (gradeId, id, lock) => {
-            try {
-                const url = lock ? ENDPOINTS.sectionLock(gradeId, id) : ENDPOINTS.sectionUnlock(gradeId, id);
-                return await http('PATCH', url, null);
-            } catch (e) {
-                // fallback: تغيير status مباشرة لو لا يوجد lock/unlock
-                const status = lock ? 'Inactive' : 'Active';
-                return await http('PATCH', ENDPOINTS.section(gradeId, id), { status });
+            let branchId = sc?.branchId ?? sc?.BranchId ?? sc?.branch?.id ?? sc?.Branch?.Id ?? null;
+            if (!branchId) {
+                const branches = await api.getBranchesForSchool(schoolId);
+                if (Array.isArray(branches) && branches.length === 1) branchId = branches[0].id;
             }
+            if (!branchId) {
+                const g = await http('GET', ENDPOINTS.schoolYearsCurrent());
+                return g?.id;
+            }
+            const y = await http('GET', ENDPOINTS.schoolYearsCurrent(branchId));
+            return y?.id;
+        },
+        getCurrentYearIdGlobal: async () => {
+            const y = await http('GET', ENDPOINTS.schoolYearsCurrent());
+            return y?.id;
         },
 
-        setSectionStatus: async (gradeId, id, status) =>
-            await http('PATCH', ENDPOINTS.section(gradeId, id), { status }),
+        // Sections
+        listSections: async (gradeYearId) =>
+            await http('GET', ENDPOINTS.sections(gradeYearId)).catch(() => []),
+        createSection: async (gradeYearId, dto) =>
+            await http('POST', `${API_BASE}/sectionyears`, { gradeYearId, ...dto }),
+        updateSection: async (gradeYearId, id, dto) =>
+            await http('PUT', ENDPOINTS.section(gradeYearId, id), { gradeYearId, ...dto }),
+        deleteSection: async (_gradeYearId, id) =>
+            await http('DELETE', ENDPOINTS.section(0, id)),
     };
 
-    // ================== DOM ==================
+    // ================== Helpers ==================
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+    const LOCALE = 'ar-SA-u-nu-latn';
+    const numFmt = v => new Intl.NumberFormat(LOCALE).format(Number(v || 0));
+    const gradeNameOf = (r) => r?.gradeName || r?.name || '';
+
+    function toast(title, icon = 'success') {
+        if (window.Swal) Swal.fire({ toast: true, position: 'top', timer: 2200, showConfirmButton: false, icon, title });
+        else alert(title);
+    }
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+    // أسماء العرض
+    let SCHOOLS = [];
+    let STAGES = [];
+    const schoolName = id => (SCHOOLS.find(x => x.id == id)?.name) || id || '—';
+    let STAGES_ALL = [];
+    let STAGE_NAME_BY_ID = {};
+    const stageName = id => STAGE_NAME_BY_ID[String(id)] || (STAGES.find(x => x.id == id)?.name) || '—';
+
+    // السنة الحالية في الشارة — مع تصحيح قيمة yearId إن كانت "كود" وليس معرف
+    async function renderYearBadge() {
+        let yid = window.__APP__?.yearId;
+        if (!yid || isLikelyYearCode(yid)) {
+            try { yid = await resolveYearId($filterSchoolId.val() ? Number($filterSchoolId.val()) : undefined); } catch { }
+        }
+        $('#yearBadge').html(
+            `<span class="chip"><i class="bi bi-info-circle"></i> السنة الحالية: <b class="ms-1">${esc(String(yid ?? '—'))}</b></span>`
+        );
+    }
+    function isLikelyYearCode(v) {
+        const s = String(v ?? '').trim();
+        return !s || s.includes('/') || Number(s) >= 1900;
+    }
+    async function resolveYearId(schoolId) {
+        if (schoolId) {
+            const y = await api.getCurrentYearIdForSchool(Number(schoolId));
+            if (y) return y;
+        }
+        const yg = await api.getCurrentYearIdGlobal();
+        return yg ?? null;
+    }
+
+    // بادجات الشُّعب
+    function renderGradeSectionCombinedBadges(_gradeName, sectionNames = []) {
+        const names = Array.isArray(sectionNames) ? sectionNames : [];
+        const chips = names.map(n =>
+            `<span class="badge rounded-pill text-bg-light border me-1 mb-1">${esc(`${_gradeName || ''} - ${n}`.trim())}</span>`
+        ).join('');
+        const fallback = _gradeName
+            ? `<span class="badge rounded-pill text-bg-primary border me-1 mb-1 badge-grade">${esc(_gradeName)}</span>`
+            : '';
+        return `<div class="badges-wrap">${chips || fallback}</div>`;
+    }
+
+    function enableStageSelect() {
+        $stageId.prop('disabled', false).removeAttr('disabled');
+        if ($stageId.data('select2')) {
+            const container = $stageId.next('.select2-container');
+            if (container && container.length) container.removeClass('select2-container--disabled');
+            $stageId.trigger('change.select2');
+        }
+    }
+
+    function isStageOptionsLoaded() {
+        const count = $stageId.children('option').length;
+        if (count === 0) return false;
+        if (count === 1 && ($stageId.children('option').first().val() ?? '') === '') return false;
+        return true;
+    }
+    async function ensureStagesLoadedForCurrentSchool() {
+        const sid = Number($schoolId.val() || 0);
+        if (!sid) return;
+        if (!isStageOptionsLoaded() || $stageId.prop('disabled')) {
+            await loadStagesFor(sid);
+        }
+    }
+
+    // ================== DOM Elements ==================
     const $yearBadge = $('#yearBadge');
     const $txtSearch = $('#txtSearch');
     const $filterSchoolId = $('#filterSchoolId');
     const $filterStageId = $('#filterStageId');
     const $btnResetFilters = $('#btnResetFilters');
     const $btnRefresh = $('#btnRefresh');
-    const $btnExport = $('#btnExport');
-    const $btnReports = $('#btnReports');
     const $btnAddGrade = $('#btnAddGrade');
 
     // عناصر نموذج الصف
@@ -147,79 +253,9 @@
     let sectionsModal = null;
 
     // ================== State ==================
-    let SCHOOLS = [];
-    let STAGES = [];
     let ROWS = [];
     let dt;
     let _currentGradeCapacity = 0;
-
-    let STAGES_ALL = [];
-    let STAGE_NAME_BY_ID = {};
-
-    // 👇 جديد: حالة صريحة للإنشاء/التعديل
-    let CURRENT_GRADE_ID = null; // null = إنشاء, رقم = تعديل
-
-    // ================== Helpers ==================
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
-    const LOCALE = 'ar-SA-u-nu-latn';
-    const numFmt = v => new Intl.NumberFormat(LOCALE).format(Number(v || 0));
-
-    function toast(title, icon = 'success') { if (window.Swal) Swal.fire({ toast: true, position: 'top', timer: 2200, showConfirmButton: false, icon, title }); else alert(title); }
-    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-
-    const schoolName = id => (SCHOOLS.find(x => x.id == id)?.name) || id || '—';
-    const stageName = id => STAGE_NAME_BY_ID[String(id)] || (STAGES.find(x => x.id == id)?.name) || '—';
-
-    function renderYearBadge() {
-        const yid = window.__APP__?.yearId;
-        $yearBadge.html(`<span class="chip"><i class="bi bi-info-circle"></i> السنة الحالية: <b class="ms-1">${esc(String(yid ?? '—'))}</b></span>`);
-    }
-
-    // لا نحذف الدوال القديمة؛ هذه دالة جديدة
-    function renderGradeSectionCombinedBadges(gradeName, sectionNames = []) {
-        const names = Array.isArray(sectionNames) ? sectionNames : [];
-        const chips = names.map(n =>
-            `<span class="badge rounded-pill text-bg-light border me-1 mb-1">${esc(`${gradeName || ''} - ${n}`.trim())}</span>`
-        ).join('');
-
-        // لو لا توجد شُعب، على الأقل أظهر بادج باسم الصف
-        const fallback = gradeName
-            ? `<span class="badge rounded-pill text-bg-primary border me-1 mb-1 badge-grade">${esc(gradeName)}</span>`
-            : '';
-
-        return `<div class="badges-wrap">${chips || fallback}</div>`;
-    }
-
-    // ضعها قرب الهيلبرز
-    function renderSectionBadges(preview = [], total = 0) {
-        const extra = Math.max(0, (Number(total) || 0) - (preview?.length || 0));
-        const chips = (preview || []).map(n =>
-            `<span class="badge rounded-pill text-bg-light border me-1">${esc(n)}</span>`
-        ).join('');
-        const more = extra > 0
-            ? `<span class="badge rounded-pill text-bg-secondary">+${extra}</span>`
-            : '';
-        return chips + more;
-    }
-    // لا تحذف الدالة القديمة، فقط أضف هذه:
-    function renderAllSectionBadges(names = []) {
-        const chips = (names || []).map(n =>
-            `<span class="badge rounded-pill text-bg-light border me-1 mb-1">${esc(n)}</span>`
-        ).join('');
-        // غلاف يسمح بالـ flex-wrap
-        return `<div class="badges-wrap">${chips}</div>`;
-    }
-
-
-
-    function enableStageSelect() {
-        $stageId.prop('disabled', false).removeAttr('disabled');
-        if ($stageId.data('select2')) {
-            const container = $stageId.next('.select2-container');
-            if (container && container.length) container.removeClass('select2-container--disabled');
-            $stageId.trigger('change.select2');
-        }
-    }
 
     async function loadAllStages() {
         STAGES_ALL = await api.getStages(null).catch(() => []);
@@ -227,6 +263,168 @@
         STAGES_ALL.forEach(st => { STAGE_NAME_BY_ID[String(st.id)] = st.name; });
     }
 
+    async function loadLookups() {
+        SCHOOLS = await api.getSchools(); // يبني SCHOOLS_BY_ID أيضاً
+
+        $filterSchoolId.empty().append(new Option('الكل', ''));
+        SCHOOLS.forEach(s => $filterSchoolId.append(new Option(s.name, String(s.id))));
+        if (!$filterSchoolId.data('select2'))
+            $filterSchoolId.select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'كل المدارس' });
+
+        $schoolId.empty();
+        SCHOOLS.forEach(s => $schoolId.append(new Option(s.name, String(s.id))));
+        if (!$schoolId.data('select2'))
+            $schoolId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
+
+        $stageId.prop('disabled', true);
+        if (!$stageId.data('select2'))
+            $stageId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
+
+        $filterStageId.prop('disabled', true);
+        if (!$filterStageId.data('select2'))
+            $filterStageId.select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'كل المراحل' });
+    }
+
+    async function loadStagesFor(schoolId) {
+        STAGES = await api.getStages(schoolId);
+        // مودال
+        $stageId.prop('disabled', false).empty();
+        STAGES.forEach(st => $stageId.append(new Option(st.name, String(st.id))));
+        enableStageSelect();
+        $stageId.trigger('change.select2');
+        // فلتر
+        $filterStageId.prop('disabled', false).empty().append(new Option('الكل', ''));
+        STAGES.forEach(st => $filterStageId.append(new Option(st.name, String(st.id))));
+        $filterStageId.trigger('change.select2');
+    }
+
+    // CSS: تكبير مودال الصف + تمرير مريح
+    if (!document.getElementById('grade-modal-comfy-style')) {
+        const st = document.createElement('style');
+        st.id = 'grade-modal-comfy-style';
+        st.textContent = `
+      #gradeModal .modal-dialog { max-width: 980px; width: 95vw; }
+      @media (min-width: 1400px) { #gradeModal .modal-dialog { max-width: 1100px; } }
+      #gradeModal .modal-body { max-height: calc(100vh - 220px); overflow: auto; }
+      #gradeModal .modal-content { border-radius: 14px; }
+    `;
+        document.head.appendChild(st);
+    }
+
+    // ================== Branch UI ==================
+    function findBranchElements() {
+        const $scope = $('#gradeModal');
+        return {
+            select: $scope.find(
+                'select#branchId, select#BranchId, select[name="branchId"], select[data-field="branchId"], select[id*="branch"]'
+            ).first(),
+            text: $scope.find('#branchName, #BranchName, input[name="branchName"], [data-field="branchName"]').first(),
+            label: $scope.find('#branchLabel, [data-field="branchLabel"]').first()
+        };
+    }
+
+    function initBranchSelect2($sel) {
+        if (!$sel || !$sel.length) return;
+        if (!$sel.data('select2')) {
+            $sel.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
+        }
+    }
+    async function fillBranchUIForSchool(schoolId) {
+        const { select: $select, text: $text, label: $label } = findBranchElements();
+        const setEmpty = () => {
+            if ($select && $select.length) {
+                $select.prop('disabled', true).empty().append(new Option('—', ''));
+                initBranchSelect2($select);
+                $select.val('').trigger('change.select2');
+            }
+            if ($text && $text.length) ($text.is('input,textarea') ? $text.val('—') : $text.text('—'));
+            if ($label && $label.length) $label.addClass('text-muted');
+        };
+
+        const sid = Number(schoolId || 0);
+        if (!sid) { setEmpty(); return; }
+
+        initBranchSelect2($select);
+
+        let sc = SCHOOLS_BY_ID[String(sid)];
+        if (!sc || !sc.branchId) sc = await api.getSchool(sid).catch(() => sc);
+
+        let branchId = sc?.branchId ?? sc?.BranchId ?? sc?.branch?.id ?? sc?.Branch?.Id ?? null;
+        let branchName = sc?.branch?.name ?? sc?.Branch?.Name ?? sc?.branchName ?? null;
+
+        const branches = await api.getBranchesForSchool(sid).catch(() => []);
+        if (!Array.isArray(branches) || branches.length === 0) { setEmpty(); return; }
+
+        if (!branchId) {
+            branchId = branches[0].id;
+            branchName = branches[0].name;
+        }
+
+        if ($select && $select.length) {
+            $select.prop('disabled', false).empty();
+            branches.forEach(b => $select.append(new Option(b.name || `#${b.id}`, b.id)));
+            $select.val(String(branchId)).trigger('change.select2');
+            if (branches.length === 1) {
+                $select.prop('disabled', true);
+                $select.next('.select2-container .select2-selection').addClass('bg-light');
+            } else {
+                $select.prop('disabled', false);
+                $select.next('.select2-container .select2-selection').removeClass('bg-light');
+            }
+        }
+
+        if ($text && $text.length)
+            ($text.is('input,textarea') ? $text.val(branchName || (branchId ? `#${branchId}` : '—'))
+                : $text.text(branchName || (branchId ? `#${branchId}` : '—')));
+        if ($label && $label.length) $label.toggleClass('text-muted', !branchId);
+    }
+
+    // ================== Sections Preview Cache ==================
+    const _SECTIONS_PREVIEW_CACHE = new Map();
+
+    // ✅ الآن ترجع أيضًا usedCapacity لحساب "المتاح"
+    async function fetchSectionsPreview(gradeId) {
+        if (_SECTIONS_PREVIEW_CACHE.has(gradeId)) return _SECTIONS_PREVIEW_CACHE.get(gradeId);
+
+        const list = await api.listSections(gradeId).catch(() => []);
+        const names = (list || []).map(s => s?.name).filter(Boolean);
+        const preview = names.slice(0, 3);
+        const usedCapacity = (list || []).reduce((sum, s) => sum + (Number(s.capacity) || 0), 0);
+
+        const result = { sectionsPreview: preview, sectionsCount: names.length, usedCapacity };
+        _SECTIONS_PREVIEW_CACHE.set(gradeId, result);
+        return result;
+    }
+
+    // ✅ helper لإجمالي الرسوم
+    function totalFeesOf(r) {
+        if (Array.isArray(r?.fees) && r.fees.length) {
+            return r.fees.reduce((s, f) => s + (Number(f.amount) || 0), 0);
+        }
+        return Number(r?.tuition || 0);
+    }
+
+    async function enrichRowsWithSections(rows, limit = 25) {
+        const list = Array.isArray(rows) ? rows : [];
+        const slice = list.slice(0, Math.max(0, limit));
+        for (const r of slice) {
+            try {
+                const { sectionsPreview, sectionsCount, usedCapacity } = await fetchSectionsPreview(r.id);
+                r.sectionsPreview = sectionsPreview;
+                r.sectionsCount = sectionsCount;
+
+                const totalCap = Number(r.capacity) || 0;
+                const used = Number(usedCapacity) || 0;
+                r.available = (totalCap - used);
+
+                // حضّر إجمالي الرسوم للحقل إن أردت استخدامه لاحقاً
+                r._totalFees = totalFeesOf(r);
+            } catch { /* ignore */ }
+        }
+        return rows;
+    }
+
+    // ================== Stats ==================
     function updateStats(rows) {
         const list = rows || [];
         const totalGrades = list.length;
@@ -238,48 +436,33 @@
         $('#statUpdated').text(new Date().toLocaleString(LOCALE));
     }
 
-    // ================== Filters / Lookups ==================
-    async function loadLookups() {
-        SCHOOLS = await api.getSchools();
-        $filterSchoolId.empty().append(new Option('الكل', ''));
-        SCHOOLS.forEach(s => $filterSchoolId.append(new Option(s.name, String(s.id))));
-        if (!$filterSchoolId.data('select2')) $filterSchoolId.select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'كل المدارس' });
-
-        $schoolId.empty();
-        SCHOOLS.forEach(s => $schoolId.append(new Option(s.name, String(s.id))));
-        if (!$schoolId.data('select2')) $schoolId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
-
-        $stageId.prop('disabled', true);
-        if (!$stageId.data('select2')) $stageId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
-
-        $filterStageId.prop('disabled', true);
-        if (!$filterStageId.data('select2')) $filterStageId.select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'كل المراحل' });
-    }
-
-    async function loadStagesFor(schoolId) {
-        STAGES = await api.getStages(schoolId);
-        $stageId.prop('disabled', false).empty();
-        STAGES.forEach(st => $stageId.append(new Option(st.name, String(st.id))));
-        enableStageSelect();
-        $stageId.trigger('change.select2');
-
-        $filterStageId.prop('disabled', false).empty().append(new Option('الكل', ''));
-        STAGES.forEach(st => $filterStageId.append(new Option(st.name, String(st.id))));
-        $filterStageId.trigger('change.select2');
-    }
-
-    // ================== Table ==================
+    // ================== Table (DataTables) ==================
     async function filterTable() {
-        const params = {
-            schoolId: $filterSchoolId.val() || undefined,
-            stageId: $filterStageId.prop('disabled') ? undefined : ($filterStageId.val() || undefined),
-            yearId: window.__APP__?.yearId || undefined,
+        const schoolId = $filterSchoolId.val() ? Number($filterSchoolId.val()) : undefined;
+        const stageId = !$filterStageId.prop('disabled') && $filterStageId.val() ? Number($filterStageId.val()) : undefined;
+
+        // yearId الصحيح
+        let yearId = window.__APP__?.yearId;
+        try {
+            if (!yearId || isLikelyYearCode(yearId)) {
+                yearId = await resolveYearId(schoolId);
+            }
+        } catch { yearId = null; }
+
+        const list = await api.listGrades({
+            yearId: yearId || undefined,
+            schoolId,
+            stageId,
             q: ($txtSearch.val() || '').trim() || undefined
-        };
-        const list = await api.listGrades(params);
-        ROWS = list || [];
+        });
+
+        ROWS = (list || []).map(x => ({ ...x, gradeName: gradeNameOf(x) }));
+
+        await enrichRowsWithSections(ROWS, 30);
+
         buildTable(ROWS);
         updateStats(ROWS);
+        await renderYearBadge();
     }
 
     function buildTable(rows) {
@@ -296,47 +479,61 @@
                 columns: [
                     { data: 'schoolId', render: v => esc(schoolName(v)) },
                     { data: 'stageId', render: v => esc(stageName(v)) },
-                    { data: 'gradeName', render: v => `<span class="fw-semibold">${esc(v)}</span>` },
+                    { data: null, render: r => `<span class="fw-semibold">${esc(gradeNameOf(r))}</span>` },
                     { data: 'shift', render: v => v === 'Morning' ? 'صباحي' : 'مسائي' },
                     { data: 'gender', render: v => v === 'Mixed' ? 'مختلط' : (v === 'Boys' ? 'بنين' : 'بنات') },
-                    { data: 'capacity', className: 'text-mono' },
-                    { data: 'available', className: 'text-mono', render: v => v ?? 0 },
-                    { data: 'feesTotal', className: 'text-mono', render: v => numFmt(v) },
-                    { data: null, className: 'sections-col', render: r => renderGradeSectionCombinedBadges(r.gradeName, r.sectionsPreview) },
+                    { data: 'capacity', className: 'text-mono', render: v => numFmt(v || 0) },
 
+                    // ✅ المتاح بعد الإثراء
+                    {
+                        data: null,
+                        className: 'text-mono',
+                        render: r => {
+                            const v = Number(r?.available ?? 0);
+                            const txt = numFmt(v);
+                            return v < 0
+                                ? `<span class="text-danger fw-semibold" title="تنبيه: التجاوز عن السعة">${txt}</span>`
+                                : txt;
+                        }
+                    },
+
+                    // ✅ إجمالي الرسوم (مجموع fees أو tuition)
+                    { data: null, className: 'text-mono', render: r => numFmt(totalFeesOf(r)) },
+
+                    // الشُّعب كبادجات
+                    {
+                        data: null,
+                        className: 'sections-col',
+                        render: r => renderGradeSectionCombinedBadges(gradeNameOf(r), r.sectionsPreview)
+                    },
+                    // # المعرف
                     { data: null, className: 'text-mono', render: (_, _t, r) => r.id },
+
+                    // الإجراءات
                     {
                         data: null,
                         orderable: false,
                         searchable: false,
                         render: r => {
-                            const willLock = (r.status === 'Active'); // الإجراء القادم
+                            const willLock = (r.status === 'Active');
                             const lockClass = willLock ? 'btn-outline-warning' : 'btn-outline-success';
                             const lockIcon = willLock ? 'bi-lock' : 'bi-unlock';
                             const lockTitle = willLock ? 'قفل الصف (سيصبح غير نشط)' : 'فتح الصف (سيصبح نشطًا)';
-
                             return `
-      <div class="btn-group btn-group-sm">
-        <button class="btn btn-outline-danger btn-del" data-id="${r.id}" title="حذف">
-          <i class="bi bi-trash"></i>
-        </button>
-        <button class="btn ${lockClass} btn-lock" data-id="${r.id}" title="${lockTitle}">
-          <i class="bi ${lockIcon}"></i>
-        </button>
-        <button class="btn btn-outline-info btn-sections" data-id="${r.id}" data-name="${esc(r.gradeName)}" title="الشُعب">
-          <i class="bi bi-grid-3x3-gap"></i>
-        </button>
-        <button class="btn btn-outline-primary btn-edit" data-id="${r.id}" title="تعديل">
-          <i class="bi bi-pencil-square"></i>
-        </button>
-      </div>`;
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-danger btn-del" data-id="${r.id}" title="حذف"><i class="bi bi-trash"></i></button>
+                  <button class="btn ${lockClass} btn-lock" data-id="${r.id}" title="${lockTitle}"><i class="bi ${lockIcon}"></i></button>
+                  <button class="btn btn-outline-info btn-sections" data-id="${r.id}" data-name="${esc(gradeNameOf(r))}" title="الشُعب"><i class="bi bi-grid-3x3-gap"></i></button>
+                  <button class="btn btn-outline-primary btn-edit" data-id="${r.id}" title="تعديل"><i class="bi bi-pencil-square"></i></button>
+                </div>`;
                         }
                     }
-
                 ]
             });
 
+            // أحداث الأزرار
             $table.on('click', '.btn-edit', e => openGradeUpsert(Number($(e.currentTarget).data('id'))));
+
             $table.on('click', '.btn-del', async e => {
                 const id = Number($(e.currentTarget).data('id'));
                 if (!id) return;
@@ -352,99 +549,58 @@
                 const nm = $(e.currentTarget).data('name') || (ROWS.find(x => x.id === id)?.gradeName) || '';
                 await openSections(id, nm);
             });
-            // ✅ زر القفل/الفتح مع رسالة تأكيد قبل الإجراء
-            $table.on('click', '.btn-lock', async function () {
-                const id = Number($(this).data('id'));
-                if (!id) return;
 
+            $table.on('click', '.btn-lock', async function () {
+                const id = Number($(this).data('id')); if (!id) return;
                 const $btn = $(this).prop('disabled', true);
                 try {
-                    // 1) احضر بيانات الصف لتحديد الحالة الحالية
                     const g = await api.getGrade(id);
                     const isActive = (g.status === 'Active');
-
-                    // نصوص التأكيد حسب الحالة
                     const title = isActive ? 'قفل الصف؟' : 'فتح الصف؟';
                     const html = isActive
-                        ? `
-        سيؤدي <b>قفل الصف</b> إلى:
-        <ul class="text-start">
-          <li>إخفائه من قوائم التسجيل والاختيار.</li>
-          <li>منع التعديلات العرضية على الشُعب والرسوم.</li>
-        </ul>
-        هل تريد المتابعة؟
-      `
-                        : `
-        سيؤدي <b>فتح الصف</b> إلى:
-        <ul class="text-start">
-          <li>ظهوره مرة أخرى في قوائم التسجيل.</li>
-          <li>السماح بإدارة الشُعب والرسوم بشكل طبيعي.</li>
-        </ul>
-        هل تريد المتابعة؟
-      `;
-                    const confirmText = isActive ? 'تأكيد القفل' : 'تأكيد الفتح';
-
-                    // 2) نافذة التأكيد (SweetAlert)، مع بديل confirm() لو غير متوفّر
+                        ? `سيؤدي <b>قفل الصف</b> إلى:<ul class="text-start"><li>إخفائه من قوائم التسجيل.</li><li>منع التعديلات العرضية.</li></ul>هل تريد المتابعة؟`
+                        : `سيؤدي <b>فتح الصف</b> إلى:<ul class="text-start"><li>ظهوره في قوائم التسجيل.</li><li>السماح بالإدارة المعتادة.</li></ul>هل تريد المتابعة؟`;
                     let proceed = true;
                     if (window.Swal) {
-                        const r = await Swal.fire({
-                            icon: isActive ? 'warning' : 'question',
-                            title,
-                            html,
-                            focusCancel: true,
-                            showCancelButton: true,
-                            confirmButtonText: confirmText,
-                            cancelButtonText: 'إلغاء',
-                            reverseButtons: true,
-                        });
+                        const r = await Swal.fire({ icon: isActive ? 'warning' : 'question', title, html, focusCancel: true, showCancelButton: true, confirmButtonText: isActive ? 'تأكيد القفل' : 'تأكيد الفتح', cancelButtonText: 'إلغاء', reverseButtons: true });
                         proceed = r.isConfirmed;
-                    } else {
-                        proceed = confirm((isActive ? 'قفل' : 'فتح') + ' الصف؟');
-                    }
+                    } else proceed = confirm((isActive ? 'قفل' : 'فتح') + ' الصف؟');
                     if (!proceed) return;
 
-                    // 3) بناء الحمولة وفق SaveReq مع عكس الحالة فقط
                     const payload = {
-                        yearId: g.yearId,
-                        schoolId: g.schoolId,
-                        stageId: g.stageId,
-                        name: g.gradeName || g.name || '',
-                        shift: g.shift,
-                        gender: g.gender,
-                        capacity: g.capacity,
-                        tuition: g.tuition,
-                        sortOrder: g.sortOrder,
-                        status: isActive ? 'Inactive' : 'Active', // ← التبديل
-                        notes: g.notes || null,
+                        id: g.id, yearId: g.yearId, schoolId: g.schoolId, stageId: g.stageId,
+                        name: gradeNameOf(g), shift: g.shift, gender: g.gender,
+                        capacity: g.capacity, tuition: g.tuition, sortOrder: g.sortOrder,
+                        status: isActive ? 'Inactive' : 'Active', notes: g.notes || null,
                         fees: (g.fees || []).map(f => ({ type: f.type, name: f.name, amount: f.amount }))
                     };
-
-                    // 4) التنفيذ والتحديث
                     await api.updateGrade(id, payload);
                     toast(isActive ? 'تم قفل الصف' : 'تم فتح الصف');
                     await filterTable();
-                } catch (err) {
-                    toast(String(err?.message || err), 'error');
-                    console.error(err);
-                } finally {
-                    $btn.prop('disabled', false);
-                }
+                } catch (err) { toast(String(err?.message || err), 'error'); console.error(err); }
+                finally { $btn.prop('disabled', false); }
             });
 
             if ($btnRefresh.length) $btnRefresh.on('click', filterTable);
             if ($btnAddGrade.length) $btnAddGrade.on('click', () => openGradeUpsert());
             if ($txtSearch.length) $txtSearch.on('input', debounce(filterTable, 300));
+
             if ($filterSchoolId.length) $filterSchoolId.on('change', async function () {
                 const sid = Number($(this).val() || 0);
-                if (sid) await loadStagesFor(sid); else { $filterStageId.val('').trigger('change'); $filterStageId.prop('disabled', true); }
+                if (sid) await loadStagesFor(sid);
+                else { $filterStageId.val('').trigger('change'); $filterStageId.prop('disabled', true); }
+                await fillBranchUIForSchool(sid || null);
                 await filterTable();
             });
+
             if ($filterStageId.length) $filterStageId.on('change', filterTable);
+
             if ($btnResetFilters.length) $btnResetFilters.on('click', async () => {
                 $txtSearch.val('');
                 $filterSchoolId.val('').trigger('change');
                 $filterStageId.val('').trigger('change');
                 $filterStageId.prop('disabled', true);
+                await fillBranchUIForSchool(null);
                 await filterTable();
             });
 
@@ -455,10 +611,7 @@
 
     async function confirmDelete() {
         if (!window.Swal) return confirm('حذف هذا الصف؟');
-        const r = await Swal.fire({
-            icon: 'warning', title: 'تأكيد', text: 'حذف هذا الصف؟',
-            showCancelButton: true, confirmButtonText: 'نعم', cancelButtonText: 'إلغاء'
-        });
+        const r = await Swal.fire({ icon: 'warning', title: 'تأكيد', text: 'حذف هذا الصف؟', showCancelButton: true, confirmButtonText: 'نعم', cancelButtonText: 'إلغاء' });
         return r.isConfirmed;
     }
 
@@ -466,21 +619,22 @@
     function resetGradeForm() {
         const $form = $('#frmGrade');
         if ($form.length) { $form[0].reset(); $form.removeClass('was-validated'); }
-        // 👇 تصفير الحقل المخفي وحالة المودال
-        $gradeYearId.val('');
-        CURRENT_GRADE_ID = null;
+        $gradeYearId.val(''); CURRENT_GRADE_ID = null;
 
-        $feesBody.empty();
-        $feeTotal.text('0');
-        if (!$schoolId.data('select2')) $schoolId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
-        if (!$stageId.data('select2')) $stageId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
+        $feesBody.empty(); $feeTotal.text('0');
+        if (!$schoolId.data('select2'))
+            $schoolId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
+        if (!$stageId.data('select2'))
+            $stageId.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#gradeModal') });
+
+        fillBranchUIForSchool(null);
     }
 
     function setGradeForm(g) {
         $gradeYearId.val(g?.id || '');
         $schoolId.val(String(g?.schoolId || '')).trigger('change');
         $stageId.val(String(g?.stageId || '')).trigger('change');
-        $gradeName.val(g?.gradeName || '');
+        $gradeName.val(gradeNameOf(g) || '');
         $shift.val(g?.shift || 'Morning');
         $gender.val(g?.gender || 'Mixed');
         $capacity.val(g?.capacity ?? 70);
@@ -507,65 +661,56 @@
         };
     }
 
+    let CURRENT_GRADE_ID = null;
+
     async function openGradeUpsert(id = null) {
         try {
-            // 👇 ثبّت وضع المودال
             CURRENT_GRADE_ID = id || null;
-
             $('#gradeModalTitle').text(id ? 'تعديل صف' : 'صف جديد');
             resetGradeForm();
 
-            // لو في مدرسة محددة من الفلتر، جهّز مراحلها
             const sid = Number($filterSchoolId.val() || 0);
             if (sid) {
                 await loadStagesFor(sid);
                 $schoolId.val(String(sid)).trigger('change');
                 enableStageSelect();
+                await fillBranchUIForSchool(sid);
             }
 
             if (id) {
                 const g = await api.getGrade(id);
+                await loadStagesFor(g.schoolId);
 
-                // لو المدرسة مختلفة عن الفلتر الحالي، حمّل مراحلها
                 if (g?.schoolId && g.schoolId !== sid) {
-                    await loadStagesFor(g.schoolId);
                     $schoolId.val(String(g.schoolId)).trigger('change');
+                    await fillBranchUIForSchool(g.schoolId);
                 }
 
-                setGradeForm({
-                    id: g.id,
-                    schoolId: g.schoolId,
-                    stageId: g.stageId,
-                    gradeName: g.gradeName || g.name || '',
-                    shift: g.shift,
-                    gender: g.gender,
-                    capacity: g.capacity,
-                    tuition: g.tuition,
-                    sortOrder: g.sortOrder,
-                    status: g.status,
-                    notes: g.notes
-                });
+                setGradeForm(g);
 
-                // ✅ عرض الرسوم القادمة من الـ API (إن وُجدت)
                 if (typeof setFees === 'function') {
                     setFees(g.fees || []);
-                    if (!g.fees || g.fees.length === 0) addFeeRow(); // صف افتراضي عند عدم وجود رسوم
+                    if (!g.fees || g.fees.length === 0) addFeeRow();
                 }
-
                 enableStageSelect();
             } else {
-                // ✅ نموذج جديد: صف رسوم افتراضي
                 if (typeof setFees === 'function') setFees([]);
                 addFeeRow();
+                await ensureStagesLoadedForCurrentSchool();
             }
 
             if (gradeModal) gradeModal.show();
-        } catch (err) {
-            toast(String(err?.message || err), 'error');
-            console.error(err);
-        }
+        } catch (err) { toast(String(err?.message || err), 'error'); console.error(err); }
     }
 
+    $(document).on('shown.bs.modal', '#gradeModal', async function () {
+        $(this).find('.modal-dialog').addClass('modal-xl');
+        const sidNow = Number($schoolId.val() || 0);
+        await fillBranchUIForSchool(sidNow || null);
+        await ensureStagesLoadedForCurrentSchool();
+    });
+
+    // الرسوم المتعددة
     if ($btnAddFee.length) $btnAddFee.on('click', () => addFeeRow());
     function addFeeRow(item = { type: 'Tuition', name: '', amount: 0 }) {
         const idx = Date.now();
@@ -589,31 +734,19 @@
         $feesBody.append(tr);
         recomputeFeesTotal();
     }
-
-    // ضِف هذا قرب دوال الرسوم الحالية
     function setFees(fees = []) {
         $feesBody.empty();
-        (fees || []).forEach(f => addFeeRow({
-            type: f.type || 'Tuition',
-            name: f.name || '',
-            amount: Number(f.amount || 0)
-        }));
+        (fees || []).forEach(f => addFeeRow({ type: f.type || 'Tuition', name: f.name || '', amount: Number(f.amount || 0) }));
         recomputeFeesTotal();
     }
-
     function collectFees() {
         const fees = [];
         $feesBody.find('tr').each(function () {
             const $tr = $(this);
-            fees.push({
-                type: $tr.find('.fee-type').val(),
-                name: ($tr.find('.fee-name').val() || '').trim(),
-                amount: Number($tr.find('.fee-amount').val() || 0)
-            });
+            fees.push({ type: $tr.find('.fee-type').val(), name: ($tr.find('.fee-name').val() || '').trim(), amount: Number($tr.find('.fee-amount').val() || 0) });
         });
         return fees;
     }
-
     function recomputeFeesTotal() {
         const total = collectFees().reduce((s, f) => s + (Number(f.amount) || 0), 0);
         $feeTotal.text(numFmt(total));
@@ -623,8 +756,10 @@
         const sid = Number($(this).val() || 0);
         if (sid) {
             await loadStagesFor(sid);
+            await fillBranchUIForSchool(sid);
         } else {
             $stageId.prop('disabled', true).trigger('change.select2');
+            await fillBranchUIForSchool(null);
         }
     });
 
@@ -632,22 +767,28 @@
 
     async function saveGrade() {
         const $form = $('#frmGrade');
-        if ($form.length && !$form[0].checkValidity()) {
-            $form.addClass('was-validated');
-            return;
-        }
+        if ($form.length && !$form[0].checkValidity()) { $form.addClass('was-validated'); return; }
 
         const dto = mapGradeDto();
         if (!dto.schoolId) { toast('اختر مدرسة/فرع', 'error'); return; }
         if (!dto.stageId) { toast('اختر مرحلة', 'error'); return; }
         if (!dto.name) { toast('اسم الصف مطلوب', 'error'); return; }
 
+        let yearId = dto.yearId;
+        try {
+            if (!yearId || isLikelyYearCode(yearId)) {
+                yearId = await resolveYearId(dto.schoolId);
+            }
+        } catch { /* ignore */ }
+        if (!yearId) { toast('تعذر تحديد السنة الدراسية الحالية.', 'error'); return; }
+
         const fees = collectFees()
             .map(f => ({ type: String(f.type || 'Other'), name: (f.name || '').trim() || null, amount: Number(f.amount || 0) }))
             .filter(f => f.amount > 0 || (f.name && f.name.length > 0));
 
         const payload = {
-            yearId: dto.yearId,
+            id: dto.id > 0 ? dto.id : undefined,
+            yearId,
             schoolId: dto.schoolId,
             stageId: dto.stageId,
             name: dto.name,
@@ -662,32 +803,20 @@
         };
 
         try {
-            // 👇 استخدم الحالة الصريحة أولًا، مع الإبقاء على منطقك القديم كتاريخ
             const editId = CURRENT_GRADE_ID || dto.id;
-
-            if (editId > 0) {
-                await api.updateGrade(editId, payload);     // PUT
-            } else {
-                await api.createGrade(payload);              // POST
-            }
-
-            // === منطقك القديم (أُبقي كتعليق كما طلبت عدم الحذف) ===
-            // if (dto.id > 0) await api.updateGrade(dto.id, payload);     // PUT
-            // else await api.createGrade(dto);                        // POST
+            if (editId > 0) await api.updateGrade(editId, payload);
+            else await api.createGrade(payload);
 
             if (gradeModal) gradeModal.hide();
             toast('تم الحفظ');
             await filterTable();
 
-            // صفّر الحالة بعد الحفظ
             CURRENT_GRADE_ID = null;
             $gradeYearId.val('');
         } catch (err) {
-            // نحاول قراءة JSON من رسالة الخطأ
             let msg = String(err?.message || err);
             try {
                 const j = JSON.parse(msg);
-                // لو الباك إند أرجع code = DUPLICATE_GRADE
                 if (j.code === 'DUPLICATE_GRADE') {
                     toast('يوجد صف بنفس الاسم لهذه السنة/المدرسة/المرحلة. افتح الصف للتعديل أو غيّر الاسم.', 'error');
                     return;
@@ -710,60 +839,36 @@
         ensureSectionsModal();
         $sectionsModalTitle.text(gradeName || `#${gradeId}`);
 
-        // ✅ ثبّت رقم الصف الحالي للشُّعب
         CURRENT_GRADE_ID = gradeId;
-
-        // ✅ اجعل المتغير المستخدم في زر "توليد" معرفًا
         const currentGradeId = gradeId;
 
-        // حدّث السعة الإجمالية من الصف إن وُجد
         const row = ROWS.find(r => r.id === gradeId);
         _currentGradeCapacity = Number(row?.capacity || 0);
 
-        // حمّل الشُعب الحالية
         const list = await api.listSections(gradeId).catch(() => []);
         renderSectionsTable(gradeId, list);
         recomputeCapacity(list);
 
-        // إضافة سطر يدوي
         $btnAddSectionInline.off('click').on('click', () => addSectionInlineRow());
 
-        /*  (تم الإبقاء عليه كمرجع — الدالة الفعلية أُضيفت داخل كائن api)
-        toggleSectionLock: async (gradeId, id, lock) =>
-            await http('PATCH', lock ? ENDPOINTS.section(gradeId, id) + '/lock'
-                : ENDPOINTS.section(gradeId, id) + '/unlock'),
-        */
-
-        // ✅ توليد دفعة شُعب
+        // توليد دفعة شُعب
         $btnBulkSections.off('click').on('click', async () => {
             const raw = ($bulkLetters.val() || '').trim();
             if (!raw) { toast('أدخل الحروف/الأقسام أولًا', 'error'); return; }
-
-            // ✅ دعم الفاصلة العربية والمسافات والفواصل الأخرى
             const normalized = raw.replace(/[،;|]/g, ',').replace(/\s+/g, ',');
-            const letters = normalized.split(',')
-                .map(x => x.trim())
-                .filter(Boolean);
-
+            const letters = normalized.split(',').map(x => x.trim()).filter(Boolean);
             if (!letters.length) { toast('لا توجد عناصر لتوليدها', 'error'); return; }
-
             const cap = Number($bulkCapacity.val() || 35);
 
             try {
-                // يمكنك تنفيذها تتابعيًا أو بشكل متوازي:
-                // تتابعيًا:
                 for (const name of letters) {
                     await api.createSection(currentGradeId, { name, capacity: cap, teacher: null, notes: null });
                 }
-                // // أو متوازيًا:
-                // await Promise.all(letters.map(name => api.createSection(currentGradeId, { name, capacity: cap, teacher: null, notes: null })));
-
                 const list2 = await api.listSections(currentGradeId).catch(() => []);
                 renderSectionsTable(currentGradeId, list2);
                 recomputeCapacity(list2);
                 toast('تم توليد الشُعب');
             } catch (err) {
-                // إظهار أول خطأ فالديشن بشكل واضح إن وُجد
                 let msg = String(err?.message || err);
                 try {
                     const j = JSON.parse(msg);
@@ -778,71 +883,8 @@
         sectionsModal?.show();
     }
 
-    // مستمع قفل/فتح الشُّعب
     $sectionsTableBody.off('click', '.sec-lock').on('click', '.sec-lock', async function () {
-        const $tr = $(this).closest('tr');
-        const id = Number($tr.data('id') || 0);
-        if (!id) return;
-
-        const current = String($tr.data('status') || 'Active');
-        const isActive = (current === 'Active');
-        const nextStatus = isActive ? 'Inactive' : 'Active';
-
-        // رسالة توضيحية
-        const htmlMsg = isActive
-            ? 'قفل الشُّعبة يعني إخفاءها من التسجيل/التخصيص وإيقاف استخدامها مؤقتًا دون حذف بياناتها.'
-            : 'فتح الشُّعبة سيعيد إتاحتها للتسجيل/التخصيص والعمل عليها.';
-
-        // تأكيد
-        let ok = true;
-        if (window.Swal) {
-            const res = await Swal.fire({
-                icon: isActive ? 'warning' : 'question',
-                title: isActive ? 'قفل الشُّعبة؟' : 'فتح الشُّعبة؟',
-                html: `<div class="text-start">${htmlMsg}</div>`,
-                showCancelButton: true,
-                confirmButtonText: isActive ? 'تأكيد القفل' : 'تأكيد الفتح',
-                cancelButtonText: 'إلغاء'
-            });
-            ok = res.isConfirmed;
-        } else {
-            ok = confirm((isActive ? 'قفل' : 'فتح') + ' الشُّعبة؟');
-        }
-        if (!ok) return;
-
-        const $btn = $(this).prop('disabled', true);
-        try {
-            await api.toggleSectionLock(CURRENT_GRADE_ID || 0, id, isActive); // PATCH
-
-            // حدّث الحالة بصريًا فورًا
-            $tr.attr('data-status', nextStatus);
-            const $badgeCell = $tr.find('td').eq(1); // نفس مكان البادج
-            $badgeCell.find('.badge').remove();
-            $badgeCell.prepend(
-                nextStatus === 'Active'
-                    ? '<span class="badge bg-success-subtle text-success">نشطة</span>'
-                    : '<span class="badge bg-secondary">مقفلة</span>'
-            );
-
-            // بدّل لون/أيقونة الزر
-            const $icon = $btn.find('i');
-            if (nextStatus === 'Active') {
-                $btn.removeClass('btn-outline-success').addClass('btn-outline-warning')
-                    .attr('title', 'قفل الشُّعبة (ستصبح غير نشطة)');
-                $icon.removeClass('bi-unlock').addClass('bi-lock');
-            } else {
-                $btn.removeClass('btn-outline-warning').addClass('btn-outline-success')
-                    .attr('title', 'فتح الشُّعبة (ستصبح نشطة)');
-                $icon.removeClass('bi-lock').addClass('bi-unlock');
-            }
-
-            toast(nextStatus === 'Active' ? 'تم فتح الشُّعبة' : 'تم قفل الشُّعبة');
-        } catch (err) {
-            toast(String(err?.message || err), 'error');
-            console.error(err);
-        } finally {
-            $btn.prop('disabled', false);
-        }
+        toast('قفل/فتح الشُّعب غير مدعوم حاليًا في الخادم.', 'error');
     });
 
     function renderSectionsTable(gradeId, sections) {
@@ -851,7 +893,6 @@
             $sectionsTableBody.append(sectionRowHtml(s, i + 1));
         });
 
-        // حفظ
         $sectionsTableBody.off('click', '.sec-save').on('click', '.sec-save', async function () {
             const $tr = $(this).closest('tr');
             const dto = readSectionRow($tr);
@@ -868,12 +909,10 @@
                 renderSectionsTable(gradeId, fresh);
                 recomputeCapacity(fresh);
             } catch (err) {
-                toast(String(err.message || err), 'error');
-                console.error(err);
+                toast(String(err.message || err), 'error'); console.error(err);
             }
         });
 
-        // حذف
         $sectionsTableBody.off('click', '.sec-del').on('click', '.sec-del', async function () {
             const $tr = $(this).closest('tr');
             const id = Number($tr.data('id') || 0);
@@ -884,14 +923,13 @@
                 recomputeCapacity(fresh);
                 toast('تم الحذف');
             } catch (err) {
-                toast(String(err.message || err), 'error');
-                console.error(err);
+                toast(String(err.message || err), 'error'); console.error(err);
             }
         });
     }
 
     function sectionRowHtml(s, idx) {
-        const isActive = (s.status !== 'Inactive'); // افتراضي Active لو null
+        const isActive = (s.status !== 'Inactive');
         const lockClass = isActive ? 'btn-outline-warning' : 'btn-outline-success';
         const lockIcon = isActive ? 'bi-lock' : 'bi-unlock';
         const lockTitle = isActive ? 'قفل الشُّعبة (ستصبح غير نشطة)' : 'فتح الشُّعبة (ستصبح نشطة)';
@@ -900,44 +938,20 @@
             : '<span class="badge bg-secondary">مقفلة</span>';
 
         return `
-    <tr data-id="${s.id || ''}" data-status="${isActive ? 'Active' : 'Inactive'}">
-      <td class="text-mono">${idx}</td>
-
-      <!-- ✅ عمود الحالة المستقل -->
-      <td class="sec-status">${statusBadge}</td>
-
-      <!-- الاسم -->
-      <td>
-        <input class="form-control form-control-sm sec-name" value="${esc(s.name || '')}" placeholder="أ/ب/ج">
-      </td>
-
-      <!-- السعة -->
-      <td style="width:120px">
-        <input type="number" min="1" class="form-control form-control-sm sec-capacity" value="${s.capacity || 0}">
-      </td>
-
-      <!-- المربي -->
-      <td>
-        <input class="form-control form-control-sm sec-teacher" value="${esc(s.teacher || '')}" placeholder="مربي الفصل">
-      </td>
-
-      <!-- الملاحظات -->
-      <td>
-        <input class="form-control form-control-sm sec-notes" value="${esc(s.notes || '')}" placeholder="ملاحظات">
-      </td>
-
-      <!-- الإجراءات -->
-      <td class="text-nowrap" style="width:160px">
-        <button type="button" class="btn ${lockClass} btn-sm sec-lock" title="${lockTitle}">
-          <i class="bi ${lockIcon}"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-primary sec-save"><i class="bi bi-check2"></i></button>
-        <button type="button" class="btn btn-sm btn-outline-danger sec-del"><i class="bi bi-trash"></i></button>
-      </td>
-    </tr>`;
+      <tr data-id="${s.id || ''}" data-status="${isActive ? 'Active' : 'Inactive'}">
+        <td class="text-mono">${idx}</td>
+        <td class="sec-status">${statusBadge}</td>
+        <td><input class="form-control form-control-sm sec-name" value="${esc(s.name || '')}" placeholder="أ/ب/ج"></td>
+        <td style="width:120px"><input type="number" min="1" class="form-control form-control-sm sec-capacity" value="${s.capacity || 0}"></td>
+        <td><input class="form-control form-control-sm sec-teacher" value="${esc(s.teacher || '')}" placeholder="مربي الفصل"></td>
+        <td><input class="form-control form-control-sm sec-notes" value="${esc(s.notes || '')}" placeholder="ملاحظات"></td>
+        <td class="text-nowrap" style="width:160px">
+          <button type="button" class="btn ${lockClass} btn-sm sec-lock" title="${lockTitle}"><i class="bi ${lockIcon}"></i></button>
+          <button type="button" class="btn btn-sm btn-outline-primary sec-save"><i class="bi bi-check2"></i></button>
+          <button type="button" class="btn btn-sm btn-outline-danger sec-del"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>`;
     }
-
-
     function readSectionRow($tr) {
         return {
             id: Number($tr.data('id') || 0) || 0,
@@ -947,11 +961,12 @@
             notes: ($tr.find('.sec-notes').val() || '').trim() || null
         };
     }
-
     function addSectionInlineRow() {
-        $sectionsTableBody.append(sectionRowHtml({ id: 0, name: '', capacity: Number($bulkCapacity.val() || 35) }, $sectionsTableBody.find('tr').length + 1));
+        $sectionsTableBody.append(sectionRowHtml(
+            { id: 0, name: '', capacity: Number($bulkCapacity.val() || 35) },
+            $sectionsTableBody.find('tr').length + 1
+        ));
     }
-
     function recomputeCapacity(sections) {
         const used = (sections || []).reduce((s, x) => s + (Number(x.capacity) || 0), 0);
         const total = _currentGradeCapacity || 0;
@@ -964,30 +979,32 @@
     $(async function () {
         try {
             const gradeModalEl = document.getElementById('gradeModal');
-            if (window.bootstrap && gradeModalEl) {
+            if (window.bootstrap && gradeModalEl)
                 gradeModal = new bootstrap.Modal(gradeModalEl, { backdrop: 'static' });
-            }
-            const sectionsModalEl = document.getElementById('sectionsModal');
-            if (window.bootstrap && sectionsModalEl) {
-                sectionsModal = new bootstrap.Modal(sectionsModalEl, { backdrop: 'static' });
-            }
 
-            renderYearBadge();
+            const sectionsModalEl = document.getElementById('sectionsModal');
+            if (window.bootstrap && sectionsModalEl)
+                sectionsModal = new bootstrap.Modal(sectionsModalEl, { backdrop: 'static' });
+
+            await renderYearBadge();
             await loadAllStages();
             await loadLookups();
 
             const sidFromQuery = $filterSchoolId.val();
-            if (sidFromQuery) await loadStagesFor(Number(sidFromQuery));
+            if (sidFromQuery) {
+                await loadStagesFor(Number(sidFromQuery));
+                await fillBranchUIForSchool(Number(sidFromQuery));
+            }
 
-            // ✅ CSS بسيط للّفّ (wrap) للبادجات
+            // CSS بسيط للّفّ (wrap) لبادجات الشُّعب
             if (!document.getElementById('grades-badges-wrap-style')) {
                 const st = document.createElement('style');
                 st.id = 'grades-badges-wrap-style';
                 st.textContent = `
-                .badges-wrap { display:flex; flex-wrap:wrap; gap:.25rem .25rem; }
-                .badge-grade { white-space:normal; }
-                #tblYears td.sections-col .badge { white-space:normal; }
-              `;
+          .badges-wrap { display:flex; flex-wrap:wrap; gap:.25rem .25rem; }
+          .badge-grade { white-space:normal; }
+          #tblYears td.sections-col .badge { white-space:normal; }
+        `;
                 document.head.appendChild(st);
             }
 

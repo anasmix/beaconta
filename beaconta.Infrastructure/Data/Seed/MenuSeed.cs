@@ -23,6 +23,12 @@ namespace beaconta.Infrastructure.Data.Seed
             // Contracts
             ["contracts.list"] = new[] { "contracts.view" },
             ["contracts.create"] = new[] { "contracts.create" },
+
+            // داخل PERM_MAP
+            ["link-fees-curricula"] = new[] { "fees.links.view" },
+            ["link-fees-curricula.manage"] = new[] { "fees.links.manage" },
+
+
         };
 
         public static async Task SeedMenuAsync(BeacontaDb db, CancellationToken ct = default)
@@ -118,6 +124,7 @@ namespace beaconta.Infrastructure.Data.Seed
                     BindPerms(it);
                     g.Items.Add(it);
                 }
+
 
                 var sections = new List<MenuSection>();
 
